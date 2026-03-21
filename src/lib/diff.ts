@@ -33,6 +33,43 @@ function parseIngredients(text: string): string[] {
 }
 
 /**
+ * Extract all leaf ingredient names from a text, flattening any nesting.
+ * "30 % Weizenfladen (Weizenmehl, Wasser, Rapsöl)" yields:
+ * ["weizenfladen", "weizenmehl", "wasser", "rapsöl"]
+ */
+function extractLeafIngredients(text: string): Set<string> {
+  const leaves = new Set<string>();
+
+  // Strip parenthesized content markers and flatten
+  const flat = text
+    .replace(/[()[\]]/g, ",") // turn parens into commas
+    .replace(/[;]/g, ",");     // normalize semicolons
+
+  const parts = flat.split(",");
+  for (const part of parts) {
+    const cleaned = part
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .replace(/[.,;:]+$/, "")
+      .replace(/^\d+[\d.,]*\s*%?\s*/, "") // strip "30 %"
+      .replace(/\.$/, "")
+      .trim();
+
+    // Skip empty, very short tokens, and allergen disclaimers
+    if (
+      cleaned.length > 1 &&
+      !cleaned.startsWith("kann spuren") &&
+      !cleaned.startsWith("may contain")
+    ) {
+      leaves.add(cleaned);
+    }
+  }
+
+  return leaves;
+}
+
+/**
  * Normalize an ingredient for matching.
  * Normalizes casing, whitespace, trailing/leading punctuation, and
  * percentage prefixes (e.g. "30 % Weizenfladen" → "weizenfladen").
@@ -59,13 +96,25 @@ export function computeIngredientDiff(
   const beforeList = parseIngredients(before);
   const afterList = parseIngredients(after);
 
-  // Build normalized sets for membership checks
-  const beforeNormSet = new Set(beforeList.map(normalizeIngredient));
-  const afterNormSet = new Set(afterList.map(normalizeIngredient));
+  // Use flattened leaf sets for matching — handles cases where one list
+  // nests sub-ingredients in parens and the other lists them flat
+  const beforeLeaves = extractLeafIngredients(before);
+  const afterLeaves = extractLeafIngredients(after);
 
-  // Find removed ingredients (in before, not in after)
+  // Check if an ingredient (or its leaf components) exists in a leaf set
+  function existsInLeaves(ing: string, leaves: Set<string>): boolean {
+    const norm = normalizeIngredient(ing);
+    if (leaves.has(norm)) return true;
+
+    // Also check if the main name (before parentheses) is in the set
+    const mainName = norm.replace(/\s*\(.*\)$/, "").trim();
+    if (mainName && leaves.has(mainName)) return true;
+
+    return false;
+  }
+
   const removed = beforeList.filter(
-    (ing) => !afterNormSet.has(normalizeIngredient(ing))
+    (ing) => !existsInLeaves(ing, afterLeaves)
   );
 
   const parts: DiffPart[] = [];
@@ -85,9 +134,8 @@ export function computeIngredientDiff(
   for (let i = 0; i < afterList.length; i++) {
     if (i > 0) parts.push({ value: ", " });
     const ing = afterList[i];
-    const norm = normalizeIngredient(ing);
 
-    if (beforeNormSet.has(norm)) {
+    if (existsInLeaves(ing, beforeLeaves)) {
       parts.push({ value: ing });
     } else {
       parts.push({ value: ing, added: true });
@@ -100,15 +148,20 @@ export function computeIngredientDiff(
 export function summarizeChange(before: string, after: string): string {
   const beforeList = parseIngredients(before);
   const afterList = parseIngredients(after);
-  const beforeNormSet = new Set(beforeList.map(normalizeIngredient));
-  const afterNormSet = new Set(afterList.map(normalizeIngredient));
 
-  const removed = beforeList.filter(
-    (ing) => !afterNormSet.has(normalizeIngredient(ing))
-  );
-  const added = afterList.filter(
-    (ing) => !beforeNormSet.has(normalizeIngredient(ing))
-  );
+  const beforeLeaves = extractLeafIngredients(before);
+  const afterLeaves = extractLeafIngredients(after);
+
+  function existsInLeaves(ing: string, leaves: Set<string>): boolean {
+    const norm = normalizeIngredient(ing);
+    if (leaves.has(norm)) return true;
+    const mainName = norm.replace(/\s*\(.*\)$/, "").trim();
+    if (mainName && leaves.has(mainName)) return true;
+    return false;
+  }
+
+  const removed = beforeList.filter((ing) => !existsInLeaves(ing, afterLeaves));
+  const added = afterList.filter((ing) => !existsInLeaves(ing, beforeLeaves));
 
   const summaryParts: string[] = [];
   if (removed.length > 0) {
@@ -130,19 +183,18 @@ export function summarizeChange(before: string, after: string): string {
 }
 
 export function isSignificantChange(before: string, after: string): boolean {
-  const beforeList = parseIngredients(before);
-  const afterList = parseIngredients(after);
-  const beforeNormSet = new Set(beforeList.map(normalizeIngredient));
-  const afterNormSet = new Set(afterList.map(normalizeIngredient));
+  const beforeLeaves = extractLeafIngredients(before);
+  const afterLeaves = extractLeafIngredients(after);
 
-  // Find truly added/removed ingredients (not just moved)
-  const removed = beforeList.filter(
-    (ing) => !afterNormSet.has(normalizeIngredient(ing))
-  );
-  const added = afterList.filter(
-    (ing) => !beforeNormSet.has(normalizeIngredient(ing))
-  );
+  // Check if any leaf ingredient was truly added or removed
+  let changed = false;
+  beforeLeaves.forEach((leaf) => {
+    if (!afterLeaves.has(leaf)) changed = true;
+  });
+  if (changed) return true;
+  afterLeaves.forEach((leaf) => {
+    if (!beforeLeaves.has(leaf)) changed = true;
+  });
 
-  // No real additions or removals = not significant (just reordering)
-  return removed.length > 0 || added.length > 0;
+  return changed;
 }

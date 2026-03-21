@@ -20,7 +20,7 @@ const VALID_CATEGORIES: VerdictCategory[] = [
 ];
 
 const MODEL_ID =
-  process.env.HF_MODEL_ID || "mistralai/Mistral-7B-Instruct-v0.3";
+  process.env.HF_MODEL_ID || "HuggingFaceH4/zephyr-7b-beta";
 
 const SYSTEM_PROMPT = `You are a food industry analyst. Given a before/after ingredient list for a food product, classify the change into exactly one category and provide a brief explanation (1-2 sentences). Also provide a confidence score from 0 to 100.
 
@@ -129,7 +129,9 @@ export async function analyzeIngredientChange(
 
     return parseVerdict(content);
   } catch (err) {
-    console.error("[hf-analysis] Error:", err instanceof Error ? err.message : err);
+    const msg = err instanceof Error ? err.message : String(err);
+    const status = (err as { statusCode?: number })?.statusCode;
+    console.error(`[hf-analysis] Error (model=${MODEL_ID}, status=${status}): ${msg}`);
     return null;
   }
 }

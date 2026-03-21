@@ -64,11 +64,7 @@ export async function POST(request: NextRequest) {
         analyzed++;
       }
     } else {
-      // Mark as analyzed so we don't retry forever
-      await supabase
-        .from("ingredient_changes")
-        .update({ ai_analyzed_at: new Date().toISOString() })
-        .eq("id", change.id);
+      // Don't mark ai_analyzed_at so we can retry later
       failed++;
     }
   }

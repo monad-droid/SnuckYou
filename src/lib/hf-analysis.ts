@@ -129,9 +129,7 @@ export async function analyzeIngredientChange(
 
     return parseVerdict(content);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    const status = (err as { statusCode?: number })?.statusCode;
-    console.error(`[hf-analysis] Error (model=${MODEL_ID}, status=${status}): ${msg}`);
+    console.error(`[hf-analysis] Full error:`, JSON.stringify(err, Object.getOwnPropertyNames(err as object), 2));
     return null;
   }
 }

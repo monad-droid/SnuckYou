@@ -55,7 +55,7 @@ async function processProduct(product: DeltaProduct, stats: Stats) {
 
   const { data: existing, error: selectError } = await supabase
     .from("products")
-    .select("*")
+    .select("barcode, ingredients_text")
     .eq("barcode", product.code)
     .maybeSingle();
 
@@ -71,8 +71,8 @@ async function processProduct(product: DeltaProduct, stats: Stats) {
     if (oldIngredients && newIngredients && isSignificantChange(oldIngredients, newIngredients)) {
       const { error } = await supabase.from("ingredient_changes").insert({
         barcode: product.code,
-        product_name: product.product_name || existing.product_name,
-        brand: product.brands || existing.brand,
+        product_name: product.product_name,
+        brand: product.brands,
         ingredients_before: oldIngredients,
         ingredients_after: newIngredients,
         changed_at: product.last_modified_t
@@ -84,31 +84,21 @@ async function processProduct(product: DeltaProduct, stats: Stats) {
       else stats.errors++;
     }
 
+    // Only update the ingredients text for future comparisons
     await supabase
       .from("products")
       .update({
-        product_name: product.product_name || existing.product_name,
-        brand: product.brands || existing.brand,
         ingredients_text: product.ingredients_text,
-        ingredients_json: product.ingredients || null,
-        image_url: product.image_url || existing.image_url,
-        categories: product.categories_tags?.join(", ") || existing.categories,
         last_modified_t: product.last_modified_t,
-        rev: product.rev,
         updated_at: new Date().toISOString(),
       })
       .eq("barcode", product.code);
   } else {
+    // Store minimal record: just barcode + ingredients for future comparison
     const { error } = await supabase.from("products").insert({
       barcode: product.code,
-      product_name: product.product_name,
-      brand: product.brands,
       ingredients_text: product.ingredients_text,
-      ingredients_json: product.ingredients || null,
-      image_url: product.image_url,
-      categories: product.categories_tags?.join(", "),
       last_modified_t: product.last_modified_t,
-      rev: product.rev,
     });
     if (!error) stats.newProducts++;
     else stats.errors++;

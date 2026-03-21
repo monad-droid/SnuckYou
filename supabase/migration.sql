@@ -60,3 +60,22 @@ CREATE POLICY "Allow service role update on products"
 CREATE POLICY "Allow service role insert on ingredient_changes"
   ON ingredient_changes FOR INSERT
   WITH CHECK (true);
+
+-- Track which delta files have been processed
+CREATE TABLE IF NOT EXISTS processed_deltas (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  filename text UNIQUE NOT NULL,
+  products_processed integer DEFAULT 0,
+  changes_detected integer DEFAULT 0,
+  processed_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE processed_deltas ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read access on processed_deltas"
+  ON processed_deltas FOR SELECT
+  USING (true);
+
+CREATE POLICY "Allow service role insert on processed_deltas"
+  ON processed_deltas FOR INSERT
+  WITH CHECK (true);

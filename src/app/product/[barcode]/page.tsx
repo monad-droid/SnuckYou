@@ -3,6 +3,21 @@ import { supabase, IngredientChange } from "@/lib/supabase";
 import DiffView from "@/components/DiffView";
 import { notFound } from "next/navigation";
 
+function formatTimeAgo(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (days < 1) return "today";
+  if (days === 1) return "1 day ago";
+  if (days < 30) return `${days} days ago`;
+  const months = Math.floor(days / 30);
+  if (months === 1) return "1 month ago";
+  if (months < 12) return `${months} months ago`;
+  const years = Math.floor(days / 365);
+  if (years === 1) return "1 year ago";
+  return `${years} years ago`;
+}
+
 async function getChangeHistory(barcode: string): Promise<IngredientChange[]> {
   try {
     const { data, error } = await supabase
@@ -54,12 +69,23 @@ export default async function ProductPage({
             {product.brands || "Unknown Brand"}
           </p>
           <p className="text-xs text-muted mt-2">Barcode: {product.code}</p>
-          {changes.length > 0 && (
-            <div className="mt-3 inline-flex items-center gap-2 bg-danger/20 text-danger text-sm px-3 py-1.5 rounded-full font-medium">
-              <span className="w-2 h-2 bg-danger rounded-full" />
-              {changes.length} ingredient change{changes.length !== 1 ? "s" : ""}{" "}
-              detected
-            </div>
+          {changes.length > 0 ? (
+            <>
+              <div className="mt-3 inline-flex items-center gap-2 bg-danger/20 text-danger text-sm px-3 py-1.5 rounded-full font-medium">
+                <span className="w-2 h-2 bg-danger rounded-full" />
+                {changes.length} ingredient change{changes.length !== 1 ? "s" : ""}{" "}
+                detected
+              </div>
+              {changes[0].changed_at && (
+                <p className="text-xs text-muted mt-2">
+                  Last changed {formatTimeAgo(new Date(changes[0].changed_at))}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-xs text-muted mt-3">
+              No ingredient changes detected since tracking began
+            </p>
           )}
         </div>
       </div>

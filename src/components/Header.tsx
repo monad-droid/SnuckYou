@@ -19,7 +19,7 @@ export default function Header() {
               Browse
             </Link>
             <Link
-              href="/"
+              href="/#recent-changes"
               className="text-emerald-800/70 font-medium pb-1 hover:text-emerald-900 transition-colors duration-200"
             >
               Recent Changes
@@ -34,7 +34,7 @@ export default function Header() {
             </span>
           </span>
           <Link
-            href="/"
+            href="/search"
             className="material-symbols-outlined text-primary p-2 hover:bg-surface-container rounded-full transition-all"
           >
             search

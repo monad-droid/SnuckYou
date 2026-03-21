@@ -45,7 +45,7 @@ export default async function Home() {
       </section>
 
       {/* Live Scrutiny Feed */}
-      <section className="bg-surface-container py-24">
+      <section id="recent-changes" className="bg-surface-container py-24">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex justify-between items-end mb-12">
             <div>

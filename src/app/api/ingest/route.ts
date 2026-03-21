@@ -10,6 +10,8 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 const BATCH_SIZE = 10; // concurrent DB operations per batch
+const MAX_DELTAS_PER_CALL = 5; // process at most 5 delta files per API call
+const DOWNLOAD_TIMEOUT = 120000; // 2 min for large delta file downloads
 
 function getSupabaseAdmin() {
   return createClient(supabaseUrl, supabaseServiceKey);
@@ -126,7 +128,7 @@ async function processDeltaFile(
   const deltaUrl = `https://static.openfoodfacts.org/data/delta/${filename}`;
   const deltaRes = await fetch(deltaUrl, {
     headers: { "User-Agent": "SnuckYou/1.0" },
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT),
   });
 
   if (!deltaRes.ok) {
@@ -208,10 +210,10 @@ export async function POST(request: NextRequest) {
 
     const processedSet = new Set((processed || []).map((r) => r.filename));
 
-    // 3. Find unprocessed deltas
-    const unprocessed = allDeltaFiles.filter((f) => !processedSet.has(f));
+    // 3. Find unprocessed deltas (limit per call to avoid timeouts)
+    const allUnprocessed = allDeltaFiles.filter((f) => !processedSet.has(f));
 
-    if (unprocessed.length === 0) {
+    if (allUnprocessed.length === 0) {
       return NextResponse.json({
         success: true,
         message: "All delta files already processed",
@@ -219,6 +221,8 @@ export async function POST(request: NextRequest) {
         alreadyProcessed: processedSet.size,
       });
     }
+
+    const unprocessed = allUnprocessed.slice(0, MAX_DELTAS_PER_CALL);
 
     // 4. Process each unprocessed delta file
     const totals = { processed: 0, changes: 0, newProducts: 0, errors: 0, firstError: undefined as string | undefined };
@@ -245,6 +249,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       deltasProcessed: unprocessed.length,
+      deltasRemaining: allUnprocessed.length - unprocessed.length,
       deltasSkipped: processedSet.size,
       totalAvailable: allDeltaFiles.length,
       stats: totals,

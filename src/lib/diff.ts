@@ -1,29 +1,112 @@
-import { diffWords } from "diff";
-
 export type DiffPart = {
   value: string;
   added?: boolean;
   removed?: boolean;
 };
 
+/**
+ * Split ingredient text into individual ingredients.
+ * Handles commas inside parentheses (e.g. "Protein Blend (Pea, Hemp)").
+ */
+function parseIngredients(text: string): string[] {
+  const results: string[] = [];
+  let current = "";
+  let depth = 0;
+
+  for (const char of text) {
+    if (char === "(") depth++;
+    else if (char === ")") depth--;
+
+    if (char === "," && depth === 0) {
+      const trimmed = current.trim();
+      if (trimmed) results.push(trimmed);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  const trimmed = current.trim();
+  if (trimmed) results.push(trimmed);
+
+  return results;
+}
+
+/**
+ * Normalize an ingredient for exact matching.
+ * Only normalizes casing, whitespace, and trailing punctuation — NOT the words
+ * themselves, so "TOMATOES" and "Roma tomato paste" remain different.
+ */
+function normalizeIngredient(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[.,;:]+$/, "")
+    .trim();
+}
+
+/**
+ * Compute an ingredient-level diff.
+ * Compares ingredients as comma-separated items. Items that moved position
+ * but still exist in both lists are shown as unchanged. Only truly added
+ * or removed ingredients are flagged.
+ */
 export function computeIngredientDiff(
   before: string,
   after: string
 ): DiffPart[] {
-  return diffWords(before, after);
+  const beforeList = parseIngredients(before);
+  const afterList = parseIngredients(after);
+
+  // Build normalized sets for membership checks
+  const beforeNormSet = new Set(beforeList.map(normalizeIngredient));
+  const afterNormSet = new Set(afterList.map(normalizeIngredient));
+
+  // Find removed ingredients (in before, not in after)
+  const removed = beforeList.filter(
+    (ing) => !afterNormSet.has(normalizeIngredient(ing))
+  );
+
+  const parts: DiffPart[] = [];
+
+  // Show removed ingredients first (strikethrough)
+  for (let i = 0; i < removed.length; i++) {
+    if (i > 0) parts.push({ value: ", ", removed: true });
+    parts.push({ value: removed[i], removed: true });
+  }
+
+  // Separator between removed and the after list
+  if (removed.length > 0 && afterList.length > 0) {
+    parts.push({ value: " " });
+  }
+
+  // Walk through the after list
+  for (let i = 0; i < afterList.length; i++) {
+    if (i > 0) parts.push({ value: ", " });
+    const ing = afterList[i];
+    const norm = normalizeIngredient(ing);
+
+    if (beforeNormSet.has(norm)) {
+      parts.push({ value: ing });
+    } else {
+      parts.push({ value: ing, added: true });
+    }
+  }
+
+  return parts;
 }
 
 export function summarizeChange(before: string, after: string): string {
-  const parts = computeIngredientDiff(before, after);
-  const added: string[] = [];
-  const removed: string[] = [];
+  const beforeList = parseIngredients(before);
+  const afterList = parseIngredients(after);
+  const beforeNormSet = new Set(beforeList.map(normalizeIngredient));
+  const afterNormSet = new Set(afterList.map(normalizeIngredient));
 
-  for (const part of parts) {
-    const trimmed = part.value.trim();
-    if (!trimmed) continue;
-    if (part.added) added.push(trimmed);
-    if (part.removed) removed.push(trimmed);
-  }
+  const removed = beforeList.filter(
+    (ing) => !afterNormSet.has(normalizeIngredient(ing))
+  );
+  const added = afterList.filter(
+    (ing) => !beforeNormSet.has(normalizeIngredient(ing))
+  );
 
   const summaryParts: string[] = [];
   if (removed.length > 0) {
@@ -45,27 +128,19 @@ export function summarizeChange(before: string, after: string): string {
 }
 
 export function isSignificantChange(before: string, after: string): boolean {
-  const normalizeForComparison = (s: string) =>
-    s
-      .toLowerCase()
-      .replace(/[^\w\s]/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
+  const beforeList = parseIngredients(before);
+  const afterList = parseIngredients(after);
+  const beforeNormSet = new Set(beforeList.map(normalizeIngredient));
+  const afterNormSet = new Set(afterList.map(normalizeIngredient));
 
-  const normalizedBefore = normalizeForComparison(before);
-  const normalizedAfter = normalizeForComparison(after);
+  // Find truly added/removed ingredients (not just moved)
+  const removed = beforeList.filter(
+    (ing) => !afterNormSet.has(normalizeIngredient(ing))
+  );
+  const added = afterList.filter(
+    (ing) => !beforeNormSet.has(normalizeIngredient(ing))
+  );
 
-  if (normalizedBefore === normalizedAfter) return false;
-
-  // Minimum character difference threshold
-  const minDiffLength = 3;
-  const parts = diffWords(normalizedBefore, normalizedAfter);
-  let totalChangedChars = 0;
-  for (const part of parts) {
-    if (part.added || part.removed) {
-      totalChangedChars += part.value.trim().length;
-    }
-  }
-
-  return totalChangedChars >= minDiffLength;
+  // No real additions or removals = not significant (just reordering)
+  return removed.length > 0 || added.length > 0;
 }

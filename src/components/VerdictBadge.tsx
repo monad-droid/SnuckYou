@@ -8,25 +8,25 @@ type VerdictConfig = {
 const VERDICT_MAP: Record<string, VerdictConfig> = {
   "Consumer Benefit": {
     icon: "thumb_up",
-    bg: "bg-green-50",
+    bg: "bg-green-50 border-2 border-green-400",
     text: "text-green-800",
     label: "Consumer Benefit",
   },
   "Cost Cutting": {
     icon: "savings",
-    bg: "bg-amber-50",
+    bg: "bg-amber-50 border-2 border-amber-400",
     text: "text-amber-800",
     label: "Cost Cutting",
   },
   "Health Concern": {
     icon: "warning",
-    bg: "bg-red-50",
+    bg: "bg-red-50 border-2 border-red-400",
     text: "text-red-800",
     label: "Health Concern",
   },
   Neutral: {
     icon: "info",
-    bg: "bg-gray-50",
+    bg: "bg-gray-50 border-2 border-gray-300",
     text: "text-gray-600",
     label: "Neutral",
   },

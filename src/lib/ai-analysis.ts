@@ -18,7 +18,7 @@ const VALID_CATEGORIES: VerdictCategory[] = [
 ];
 
 const MODEL_ID =
-  process.env.HF_MODEL_ID || "meta-llama/Llama-3.1-8B-Instruct";
+  process.env.GROQ_MODEL_ID || "llama-3.3-70b-versatile";
 
 const SYSTEM_PROMPT = `You are a food industry analyst. Given a before/after ingredient list for a food product, classify the change into exactly one category and provide a brief explanation (1-2 sentences). Also provide a confidence score from 0 to 100.
 
@@ -87,14 +87,14 @@ export async function analyzeIngredientChange(
   before: string,
   after: string
 ): Promise<IngredientVerdict | null> {
-  const token = process.env.HF_ACCESS_TOKEN;
+  const token = process.env.GROQ_API_KEY;
   if (!token) {
-    console.warn("[hf-analysis] HF_ACCESS_TOKEN not set, skipping AI analysis");
+    console.warn("[ai-analysis] GROQ_API_KEY not set, skipping AI analysis");
     return null;
   }
 
   if (callCount >= MAX_CALLS_PER_INVOCATION) {
-    console.warn("[hf-analysis] Rate limit reached for this invocation, skipping");
+    console.warn("[ai-analysis] Rate limit reached for this invocation, skipping");
     return null;
   }
 
@@ -102,7 +102,7 @@ export async function analyzeIngredientChange(
 
   try {
     const res = await fetch(
-      "https://router.huggingface.co/v1/chat/completions",
+      "https://api.groq.com/openai/v1/chat/completions",
       {
         method: "POST",
         headers: {
@@ -127,21 +127,21 @@ export async function analyzeIngredientChange(
 
     if (!res.ok) {
       const body = await res.text();
-      console.error(`[hf-analysis] HTTP ${res.status}: ${body}`);
+      console.error(`[ai-analysis] HTTP ${res.status}: ${body}`);
       return null;
     }
 
     const data = await res.json();
     const content = data?.choices?.[0]?.message?.content;
     if (!content) {
-      console.error("[hf-analysis] No content in response:", JSON.stringify(data).slice(0, 500));
+      console.error("[ai-analysis] No content in response:", JSON.stringify(data).slice(0, 500));
       return null;
     }
 
-    console.log("[hf-analysis] Raw response:", content.slice(0, 200));
+    console.log("[ai-analysis] Raw response:", content.slice(0, 200));
     return parseVerdict(content);
   } catch (err) {
-    console.error("[hf-analysis] Error:", err instanceof Error ? err.message : err);
+    console.error("[ai-analysis] Error:", err instanceof Error ? err.message : err);
     return null;
   }
 }

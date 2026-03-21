@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isSignificantChange } from "@/lib/diff";
-import { analyzeIngredientChange } from "@/lib/hf-analysis";
+import { analyzeIngredientChange } from "@/lib/ai-analysis";
 import { gunzipSync } from "zlib";
 
 // Allow up to 300s for this route (processes multiple delta files)

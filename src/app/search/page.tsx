@@ -2,6 +2,7 @@ import { searchProducts, getProduct } from "@/lib/openfoodfacts";
 import { supabase } from "@/lib/supabase";
 import SearchBar from "@/components/SearchBar";
 import ProductCard from "@/components/ProductCard";
+import WaitlistForm from "@/components/WaitlistForm";
 import { redirect } from "next/navigation";
 
 function looksLikeBarcode(q: string): boolean {
@@ -73,6 +74,20 @@ export default async function SearchPage({
         </div>
       </div>
 
+      {/* Data coverage banner */}
+      <div className="mb-8 bg-primary-fixed/30 border border-primary/10 rounded-2xl p-6">
+        <div className="flex items-start gap-4">
+          <span className="material-symbols-outlined text-primary mt-0.5">info</span>
+          <div>
+            <p className="font-body text-sm text-on-surface leading-relaxed">
+              Changes since <span className="font-bold">3/7/2025</span> will be listed below.
+              Our database will grow as our site stays live. Join the waitlist if
+              you&apos;d like to add your products to track in the future.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="mb-8">
         <SearchBar initialQuery={query} />
       </div>
@@ -112,6 +127,21 @@ export default async function SearchPage({
           </a>
         )}
       </div>
+
+      {/* Waitlist Section */}
+      <section className="mt-12 bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/10">
+        <div className="max-w-xl mx-auto text-center">
+          <span className="material-symbols-outlined text-primary text-4xl mb-4 block">notification_add</span>
+          <h3 className="font-headline font-bold text-xl text-on-surface mb-2">
+            Want to track a product we don&apos;t have?
+          </h3>
+          <p className="font-body text-sm text-on-surface-variant mb-6">
+            Join the waitlist and tell us which products or brands you&apos;d like us to monitor.
+            We&apos;ll notify you when we start tracking them.
+          </p>
+          <WaitlistForm />
+        </div>
+      </section>
     </div>
   );
 }

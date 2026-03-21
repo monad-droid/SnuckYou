@@ -93,3 +93,23 @@ CREATE POLICY "Allow public read access on processed_deltas"
 CREATE POLICY "Allow service role insert on processed_deltas"
   ON processed_deltas FOR INSERT
   WITH CHECK (true);
+
+-- Waitlist for users who want to track specific products
+CREATE TABLE IF NOT EXISTS waitlist (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  email text NOT NULL,
+  product_request text,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_waitlist_email ON waitlist(email);
+
+ALTER TABLE waitlist ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow service role insert on waitlist"
+  ON waitlist FOR INSERT
+  WITH CHECK (true);
+
+CREATE POLICY "Allow service role select on waitlist"
+  ON waitlist FOR SELECT
+  USING (true);

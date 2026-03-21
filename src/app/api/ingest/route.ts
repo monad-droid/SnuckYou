@@ -31,17 +31,23 @@ type DeltaProduct = {
 async function processProduct(
   supabase: ReturnType<typeof getSupabaseAdmin>,
   product: DeltaProduct,
-  stats: { processed: number; changes: number; newProducts: number; errors: number }
+  stats: { processed: number; changes: number; newProducts: number; errors: number; firstError?: string }
 ) {
   if (!product.code || !product.ingredients_text) return;
 
   stats.processed++;
 
-  const { data: existing } = await supabase
+  const { data: existing, error: selectError } = await supabase
     .from("products")
     .select("*")
     .eq("barcode", product.code)
-    .single();
+    .maybeSingle();
+
+  if (selectError) {
+    stats.errors++;
+    if (!stats.firstError) stats.firstError = `select: ${selectError.message}`;
+    return;
+  }
 
   if (existing) {
     const oldIngredients = existing.ingredients_text || "";
@@ -52,7 +58,7 @@ async function processProduct(
       newIngredients &&
       isSignificantChange(oldIngredients, newIngredients)
     ) {
-      await supabase.from("ingredient_changes").insert({
+      const { error: changeErr } = await supabase.from("ingredient_changes").insert({
         barcode: product.code,
         product_name: product.product_name || existing.product_name,
         brand: product.brands || existing.brand,
@@ -63,10 +69,15 @@ async function processProduct(
           : new Date().toISOString(),
         off_revision: product.rev,
       });
-      stats.changes++;
+      if (changeErr) {
+        stats.errors++;
+        if (!stats.firstError) stats.firstError = `insert change: ${changeErr.message}`;
+      } else {
+        stats.changes++;
+      }
     }
 
-    await supabase
+    const { error: updateErr } = await supabase
       .from("products")
       .update({
         product_name: product.product_name || existing.product_name,
@@ -81,8 +92,12 @@ async function processProduct(
         updated_at: new Date().toISOString(),
       })
       .eq("barcode", product.code);
+    if (updateErr) {
+      stats.errors++;
+      if (!stats.firstError) stats.firstError = `update: ${updateErr.message}`;
+    }
   } else {
-    await supabase.from("products").insert({
+    const { error: insertErr } = await supabase.from("products").insert({
       barcode: product.code,
       product_name: product.product_name,
       brand: product.brands,
@@ -93,7 +108,12 @@ async function processProduct(
       last_modified_t: product.last_modified_t,
       rev: product.rev,
     });
-    stats.newProducts++;
+    if (insertErr) {
+      stats.errors++;
+      if (!stats.firstError) stats.firstError = `insert: ${insertErr.message}`;
+    } else {
+      stats.newProducts++;
+    }
   }
 }
 
@@ -105,8 +125,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return NextResponse.json(
+      { error: "Missing Supabase env vars (NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY)" },
+      { status: 500 }
+    );
+  }
+
   const supabase = getSupabaseAdmin();
-  const stats = { processed: 0, changes: 0, newProducts: 0, errors: 0 };
+  const stats: { processed: number; changes: number; newProducts: number; errors: number; firstError?: string } =
+    { processed: 0, changes: 0, newProducts: 0, errors: 0 };
 
   try {
     // 1. Get latest delta file URL from index

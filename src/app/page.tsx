@@ -62,10 +62,10 @@ export default async function Home() {
                 <span className="material-symbols-outlined text-primary">sync</span>
               </div>
               <h3 className="font-headline font-bold text-lg text-on-surface mb-3">
-                1. We Monitor Daily
+                1. We Monitor Continuously
               </h3>
               <p className="font-body text-sm text-on-surface-variant leading-relaxed">
-                Every day, we pull the latest product data from{" "}
+                We regularly pull the latest product data from{" "}
                 <span className="font-medium text-on-surface">Open Food Facts</span>,
                 a free, open database of food products from around the world.
                 When a brand updates their ingredient list, we detect it

@@ -18,10 +18,9 @@ const VALID_CATEGORIES: VerdictCategory[] = [
 ];
 
 const MODEL_ID =
-  process.env.HF_MODEL_ID || "HuggingFaceH4/zephyr-7b-beta";
+  process.env.HF_MODEL_ID || "meta-llama/Llama-3.1-8B-Instruct";
 
-const PROMPT_TEMPLATE = `<|system|>
-You are a food industry analyst. Given a before/after ingredient list for a food product, classify the change into exactly one category and provide a brief explanation (1-2 sentences). Also provide a confidence score from 0 to 100.
+const SYSTEM_PROMPT = `You are a food industry analyst. Given a before/after ingredient list for a food product, classify the change into exactly one category and provide a brief explanation (1-2 sentences). Also provide a confidence score from 0 to 100.
 
 Categories:
 - "Consumer Benefit": Healthier ingredients, removal of artificial additives, organic upgrades, cleaner label
@@ -29,12 +28,7 @@ Categories:
 - "Health Concern": Addition of known allergens, controversial additives, artificial colors/preservatives, or higher sugar/sodium content
 - "Neutral": Minor reformulation, supplier name change, reordering without meaningful impact, or ambiguous change
 
-Respond ONLY with valid JSON: {"category": "<one of the four>", "explanation": "<1-2 sentences>", "confidence": <0-100>}</s>
-<|user|>
-BEFORE: {{BEFORE}}
-AFTER: {{AFTER}}</s>
-<|assistant|>
-`;
+Respond ONLY with valid JSON: {"category": "<one of the four>", "explanation": "<1-2 sentences>", "confidence": <0-100>}`;
 
 function parseVerdict(raw: string): IngredientVerdict | null {
   // Try direct JSON parse first
@@ -106,13 +100,9 @@ export async function analyzeIngredientChange(
 
   callCount++;
 
-  const prompt = PROMPT_TEMPLATE
-    .replace("{{BEFORE}}", before.slice(0, 1500))
-    .replace("{{AFTER}}", after.slice(0, 1500));
-
   try {
     const res = await fetch(
-      `https://router.huggingface.co/hf-inference/models/${MODEL_ID}`,
+      "https://router.huggingface.co/v1/chat/completions",
       {
         method: "POST",
         headers: {
@@ -120,12 +110,16 @@ export async function analyzeIngredientChange(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          inputs: prompt,
-          parameters: {
-            max_new_tokens: 300,
-            temperature: 0.1,
-            return_full_text: false,
-          },
+          model: MODEL_ID,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            {
+              role: "user",
+              content: `BEFORE: ${before.slice(0, 1500)}\nAFTER: ${after.slice(0, 1500)}`,
+            },
+          ],
+          max_tokens: 300,
+          temperature: 0.1,
         }),
         signal: AbortSignal.timeout(30000),
       }
@@ -138,9 +132,9 @@ export async function analyzeIngredientChange(
     }
 
     const data = await res.json();
-    const content = data?.[0]?.generated_text;
+    const content = data?.choices?.[0]?.message?.content;
     if (!content) {
-      console.error("[hf-analysis] No generated_text in response:", JSON.stringify(data));
+      console.error("[hf-analysis] No content in response:", JSON.stringify(data).slice(0, 500));
       return null;
     }
 

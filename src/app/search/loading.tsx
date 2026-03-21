@@ -1,25 +1,21 @@
 export default function SearchLoading() {
   return (
-    <div className="space-y-6">
-      {/* Search bar placeholder */}
-      <div className="w-full max-w-2xl">
-        <div className="h-12 bg-card border border-card-border rounded-lg animate-pulse" />
+    <div className="py-24 max-w-7xl mx-auto px-6">
+      <div className="mb-12">
+        <div className="h-8 w-48 bg-surface-container-high rounded mb-2 animate-pulse" />
+        <div className="h-4 w-64 bg-surface-container-high rounded animate-pulse" />
       </div>
 
-      <p className="text-sm text-muted">Searching...</p>
+      <div className="mb-8">
+        <div className="h-14 bg-surface-container-lowest rounded-full animate-pulse ring-1 ring-outline-variant/15" />
+      </div>
 
-      {/* Skeleton grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        {Array.from({ length: 12 }).map((_, i) => (
-          <div
-            key={i}
-            className="bg-card border border-card-border rounded-lg overflow-hidden"
-          >
-            <div className="w-full h-40 bg-card-border/30 animate-pulse" />
-            <div className="p-3 space-y-2">
-              <div className="h-4 bg-card-border/30 rounded animate-pulse w-3/4" />
-              <div className="h-3 bg-card-border/30 rounded animate-pulse w-1/2" />
-            </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="animate-pulse">
+            <div className="aspect-square rounded-2xl bg-surface-container-high mb-4" />
+            <div className="h-4 w-3/4 bg-surface-container-high rounded mb-2" />
+            <div className="h-3 w-1/2 bg-surface-container-high rounded" />
           </div>
         ))}
       </div>

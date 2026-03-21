@@ -33,27 +33,24 @@ export default async function SearchPage({
 
   if (!query.trim()) {
     return (
-      <div className="space-y-6">
+      <div className="max-w-7xl mx-auto px-6 py-24">
         <SearchBar />
-        <p className="text-muted text-center py-12">
+        <p className="text-on-surface-variant text-center py-12">
           Enter a search term to find products.
         </p>
       </div>
     );
   }
 
-  // If it looks like a barcode, try direct product lookup first
   if (looksLikeBarcode(query.trim())) {
     const product = await getProduct(query.trim());
     if (product) {
       redirect(`/product/${encodeURIComponent(query.trim())}`);
     }
-    // If not found, fall through to regular search
   }
 
   const results = await searchProducts(query, page);
 
-  // Filter results to only include products that match ALL search terms
   const searchTerms = query.toLowerCase().split(/\s+/).filter(Boolean);
   const filteredProducts = results.products.filter((p) => {
     const text = `${p.product_name || ""} ${p.brands || ""} ${(p.categories_tags || []).join(" ")}`.toLowerCase();
@@ -64,21 +61,28 @@ export default async function SearchPage({
   const changedBarcodes = await getBarcodesWithChanges(barcodes);
 
   return (
-    <div className="space-y-6">
-      <SearchBar initialQuery={query} />
+    <div className="py-24 max-w-7xl mx-auto px-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+        <div>
+          <h2 className="font-headline font-bold text-3xl text-primary">
+            Search Results
+          </h2>
+          <p className="font-body text-on-surface-variant">
+            Showing {filteredProducts.length} products for &ldquo;{query}&rdquo;
+          </p>
+        </div>
+      </div>
 
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted">
-          {filteredProducts.length} results for &ldquo;{query}&rdquo;
-        </p>
+      <div className="mb-8">
+        <SearchBar initialQuery={query} />
       </div>
 
       {filteredProducts.length === 0 ? (
-        <p className="text-muted text-center py-12">
+        <p className="text-on-surface-variant text-center py-12">
           No products found. Try a different search term.
         </p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
           {filteredProducts.map((product) => (
             <ProductCard
               key={product.code}
@@ -90,11 +94,11 @@ export default async function SearchPage({
       )}
 
       {/* Pagination */}
-      <div className="flex justify-center gap-4 py-6">
+      <div className="flex justify-center gap-4 py-12">
         {page > 1 && (
           <a
             href={`/search?q=${encodeURIComponent(query)}&page=${page - 1}`}
-            className="px-4 py-2 bg-card border border-card-border rounded-lg text-sm hover:border-accent transition-colors"
+            className="px-6 py-3 bg-surface-container-lowest border border-outline-variant/10 rounded-full text-sm font-headline font-bold text-primary hover:shadow-lg transition-all"
           >
             Previous
           </a>
@@ -102,7 +106,7 @@ export default async function SearchPage({
         {results.page_count > page && (
           <a
             href={`/search?q=${encodeURIComponent(query)}&page=${page + 1}`}
-            className="px-4 py-2 bg-card border border-card-border rounded-lg text-sm hover:border-accent transition-colors"
+            className="px-6 py-3 bg-primary text-on-primary rounded-full text-sm font-headline font-bold hover:scale-95 transition-all"
           >
             Next
           </a>

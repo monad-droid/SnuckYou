@@ -4,6 +4,30 @@ import Link from "next/link";
 import { IngredientChange } from "@/lib/supabase";
 import { summarizeChange } from "@/lib/diff";
 
+function formatTimeAgo(dateStr: string): string {
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now.getTime() - date.getTime();
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "1d ago";
+  return `${days}d ago`;
+}
+
+function parseChangeSummary(summary: string): { added: string[]; removed: string[] } {
+  const added: string[] = [];
+  const removed: string[] = [];
+  const addedMatch = summary.match(/Added: ([^;]+)/);
+  const removedMatch = summary.match(/Removed: ([^;]+)/);
+  if (addedMatch) added.push(...addedMatch[1].split(", ").map((s) => s.trim()));
+  if (removedMatch) removed.push(...removedMatch[1].split(", ").map((s) => s.trim()));
+  return { added, removed };
+}
+
 export default function ChangeFeed({
   changes,
 }: {
@@ -11,8 +35,8 @@ export default function ChangeFeed({
 }) {
   if (changes.length === 0) {
     return (
-      <div className="text-center py-12 text-muted">
-        <p className="text-lg">No ingredient changes detected yet.</p>
+      <div className="text-center py-12 text-on-surface-variant">
+        <p className="text-lg font-headline">No ingredient changes detected yet.</p>
         <p className="text-sm mt-2">
           The monitoring pipeline will catch changes as they happen.
         </p>
@@ -21,43 +45,66 @@ export default function ChangeFeed({
   }
 
   return (
-    <div className="space-y-3">
-      {changes.map((change) => (
-        <Link
-          key={change.id}
-          href={`/product/${change.barcode}`}
-          className="block bg-card border border-card-border rounded-lg p-4 hover:border-accent/50 transition-colors"
-        >
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-foreground truncate">
-                {change.product_name || "Unknown Product"}
-              </h3>
-              <p className="text-sm text-muted">
-                {change.brand || "Unknown Brand"}
-              </p>
-              <p className="text-sm text-accent mt-1">
-                {change.ingredients_before && change.ingredients_after
-                  ? summarizeChange(
-                      change.ingredients_before,
-                      change.ingredients_after
-                    )
-                  : "Ingredients changed"}
-              </p>
-            </div>
-            <div className="text-right shrink-0">
-              <span className="inline-block bg-danger/20 text-danger text-xs px-2 py-1 rounded-full font-medium">
-                Changed
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {changes.map((change) => {
+        const summary =
+          change.ingredients_before && change.ingredients_after
+            ? summarizeChange(change.ingredients_before, change.ingredients_after)
+            : "Ingredients changed";
+        const { added, removed } = parseChangeSummary(summary);
+
+        return (
+          <Link
+            key={change.id}
+            href={`/product/${change.barcode}`}
+            className="bg-surface-container-lowest rounded-xl p-6 hover:shadow-lg transition-all border border-outline-variant/10"
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="font-headline font-bold text-on-surface">
+                  {change.product_name || "Unknown Product"}
+                </h3>
+                <p className="font-body text-xs text-on-surface-variant">
+                  {change.brand || "Unknown Brand"}
+                </p>
+              </div>
+              <span className="font-body text-[10px] text-outline uppercase tracking-widest">
+                {change.detected_at ? formatTimeAgo(change.detected_at) : ""}
               </span>
-              <p className="text-xs text-muted mt-1">
-                {change.detected_at
-                  ? new Date(change.detected_at).toLocaleDateString()
-                  : ""}
-              </p>
             </div>
-          </div>
-        </Link>
-      ))}
+
+            <div className="space-y-3 mb-6">
+              {added.map((item, i) => (
+                <div
+                  key={`add-${i}`}
+                  className="bg-secondary-fixed text-on-secondary-fixed-variant px-3 py-2 rounded-lg text-sm flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-sm">add_circle</span>
+                  <span className="font-medium">Added: {item}</span>
+                </div>
+              ))}
+              {removed.map((item, i) => (
+                <div
+                  key={`rem-${i}`}
+                  className="bg-error-container text-on-error-container px-3 py-2 rounded-lg text-sm flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-sm">do_not_disturb_on</span>
+                  <span className="font-medium">Removed: {item}</span>
+                </div>
+              ))}
+              {added.length === 0 && removed.length === 0 && (
+                <div className="bg-secondary-fixed text-on-secondary-fixed-variant px-3 py-2 rounded-lg text-sm">
+                  <span className="font-medium">{summary}</span>
+                </div>
+              )}
+            </div>
+
+            <span className="block w-full py-2 text-primary font-bold border border-primary/10 rounded-lg hover:bg-primary/5 transition-colors text-center">
+              See Full Scrutiny
+            </span>
+          </Link>
+        );
+      })}
     </div>
   );
 }

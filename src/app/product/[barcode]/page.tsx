@@ -3,21 +3,6 @@ import { supabase, IngredientChange } from "@/lib/supabase";
 import DiffView from "@/components/DiffView";
 import { notFound } from "next/navigation";
 
-function formatTimeAgo(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (days < 1) return "today";
-  if (days === 1) return "1 day ago";
-  if (days < 30) return `${days} days ago`;
-  const months = Math.floor(days / 30);
-  if (months === 1) return "1 month ago";
-  if (months < 12) return `${months} months ago`;
-  const years = Math.floor(days / 365);
-  if (years === 1) return "1 year ago";
-  return `${years} years ago`;
-}
-
 async function getChangeHistory(barcode: string): Promise<IngredientChange[]> {
   try {
     const { data, error } = await supabase
@@ -46,220 +31,215 @@ export default async function ProductPage({
   const allImages = getProductImages(product);
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto">
-      {/* Product Header */}
-      <div className="flex flex-col sm:flex-row gap-6">
-        <div className="w-full sm:w-48 h-48 bg-card border border-card-border rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
-          {imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={imageUrl}
-              alt={product.product_name || "Product"}
-              className="object-contain w-full h-full p-4"
-            />
-          ) : (
-            <span className="text-muted text-sm">No image</span>
-          )}
-        </div>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-foreground">
-            {product.product_name || "Unknown Product"}
-          </h1>
-          <p className="text-muted text-lg">
-            {product.brands || "Unknown Brand"}
-          </p>
-          <p className="text-xs text-muted mt-2">Barcode: {product.code}</p>
-          {changes.length > 0 ? (
-            <>
-              <div className="mt-3 inline-flex items-center gap-2 bg-danger/20 text-danger text-sm px-3 py-1.5 rounded-full font-medium">
-                <span className="w-2 h-2 bg-danger rounded-full" />
-                {changes.length} ingredient change{changes.length !== 1 ? "s" : ""}{" "}
-                detected
+    <section className="py-24 bg-white">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="flex flex-col lg:flex-row gap-16">
+          {/* Photo Gallery */}
+          <div className="lg:w-1/2 space-y-6">
+            <div className="aspect-square rounded-3xl bg-surface-container overflow-hidden">
+              {imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={imageUrl}
+                  alt={product.product_name || "Product"}
+                  className="w-full h-full object-contain p-8"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-on-surface-variant">
+                  No image available
+                </div>
+              )}
+            </div>
+            {allImages.length > 1 && (
+              <div className="grid grid-cols-3 gap-4">
+                {allImages.map((img, i) => (
+                  <a
+                    key={img.label}
+                    href={img.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`aspect-square rounded-xl bg-surface-container overflow-hidden ${
+                      i === 0 ? "ring-2 ring-primary" : "grayscale opacity-50 hover:opacity-100 hover:grayscale-0 transition-all"
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={img.url}
+                      alt={`${product.product_name} - ${img.label}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </a>
+                ))}
               </div>
-              {changes[0].changed_at && (
-                <p className="text-xs text-muted mt-2">
-                  Last changed {formatTimeAgo(new Date(changes[0].changed_at))}
+            )}
+          </div>
+
+          {/* Details Content */}
+          <div className="lg:w-1/2">
+            <div className="mb-8">
+              <div className="flex items-center gap-2 mb-4">
+                {changes.length > 0 && (
+                  <span className="bg-secondary-fixed text-on-secondary-fixed-variant text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">
+                    Scrutinized
+                  </span>
+                )}
+                {changes.length > 0 && changes[0].changed_at && (
+                  <span className="text-on-surface-variant font-body text-xs">
+                    Last Updated:{" "}
+                    {new Date(changes[0].changed_at).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </span>
+                )}
+              </div>
+              <h1 className="font-headline font-extrabold text-5xl text-primary mb-2">
+                {product.product_name || "Unknown Product"}
+              </h1>
+              <p className="text-xl text-secondary font-medium mb-6">
+                {product.brands || "Unknown Brand"}
+              </p>
+              <div className="flex items-center gap-4 py-4 border-y border-outline-variant/10">
+                <div className="text-center">
+                  <span className="block font-headline font-bold text-primary">
+                    {changes.length}
+                  </span>
+                  <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">
+                    Changes
+                  </span>
+                </div>
+                <div className="h-8 w-px bg-outline-variant/20" />
+                <div className="text-center">
+                  <span className="block font-headline font-bold text-primary">UPC</span>
+                  <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">
+                    {product.code}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Ingredient Scrutiny */}
+            <div className="mb-12">
+              <h3 className="font-headline font-bold text-xl text-primary mb-6">
+                Ingredient Scrutiny
+              </h3>
+              {product.ingredients_text ? (
+                <div className="flex flex-wrap gap-2 leading-relaxed">
+                  {product.ingredients_text.split(/,\s*/).map((ingredient, i) => (
+                    <span
+                      key={i}
+                      className="px-2 py-1 rounded-md bg-surface-container-low text-on-surface"
+                    >
+                      {ingredient}
+                      {i < product.ingredients_text!.split(/,\s*/).length - 1 ? "," : ""}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-on-surface-variant italic">
+                  No ingredients listed for this product.
                 </p>
               )}
-            </>
-          ) : (
-            <p className="text-xs text-muted mt-3">
-              No ingredient changes detected since tracking began
-            </p>
-          )}
-        </div>
-      </div>
+            </div>
 
-      {/* Current Ingredients */}
-      <section>
-        <h2 className="text-lg font-bold text-foreground mb-3">
-          Current Ingredients
-        </h2>
-        <div className="bg-card border border-card-border rounded-lg p-4">
-          {product.ingredients_text ? (
-            <p className="text-sm leading-relaxed text-foreground/80">
-              {product.ingredients_text}
-            </p>
-          ) : (
-            <p className="text-sm text-muted italic">
-              No ingredients listed for this product.
-            </p>
-          )}
-        </div>
-      </section>
+            {/* Formula History Timeline */}
+            <div>
+              <h3 className="font-headline font-bold text-xl text-primary mb-6">
+                Formula History
+              </h3>
 
-      {/* Product Photos */}
-      {allImages.length > 1 && (
-        <section>
-          <h2 className="text-lg font-bold text-foreground mb-3">
-            Product Photos
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {allImages.map((img) => (
-              <a
-                key={img.label}
-                href={img.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-card border border-card-border rounded-lg overflow-hidden hover:border-accent transition-colors"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={img.url}
-                  alt={`${product.product_name} - ${img.label}`}
-                  className="object-contain w-full h-48 p-2"
-                />
-                <div className="text-center text-xs text-muted py-2 border-t border-card-border">
-                  {img.label}
+              {changes.length === 0 ? (
+                <div className="bg-surface-container-lowest rounded-xl p-6 text-center border border-outline-variant/10">
+                  <p className="text-on-surface-variant">
+                    No ingredient changes detected for this product yet.
+                  </p>
+                  <p className="text-xs text-on-surface-variant mt-2">
+                    Changes will appear here once the monitoring pipeline detects modifications.
+                  </p>
                 </div>
-              </a>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Change History */}
-      <section>
-        <h2 className="text-lg font-bold text-foreground mb-3">
-          Ingredient Change History
-        </h2>
-
-        {changes.length === 0 ? (
-          <div className="bg-card border border-card-border rounded-lg p-6 text-center">
-            <p className="text-muted">
-              No ingredient changes detected for this product yet.
-            </p>
-            <p className="text-xs text-muted mt-2">
-              Changes will appear here once the monitoring pipeline detects
-              modifications.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {changes.map((change, index) => (
-              <div
-                key={change.id}
-                className="bg-card border border-card-border rounded-lg p-4"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-foreground">
-                    Change #{changes.length - index}
-                  </span>
-                  <div className="text-right">
-                    <span className="text-xs text-muted">
-                      {change.changed_at
-                        ? new Date(change.changed_at).toLocaleDateString(
-                            "en-US",
-                            {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            }
-                          )
-                        : "Unknown date"}
-                    </span>
-                    {change.off_revision && (
-                      <span className="text-xs text-muted block">
-                        Revision #{change.off_revision}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {/* Before/After Label Photos */}
-                {(change.image_before_url || change.image_after_url) && (
-                  <div className="border-t border-card-border pt-3">
-                    <p className="text-xs font-medium text-muted mb-2">Label Photos</p>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs text-danger mb-1">Before</p>
-                        {change.image_before_url ? (
-                          <a href={change.image_before_url} target="_blank" rel="noopener noreferrer">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={change.image_before_url}
-                              alt="Ingredients label before change"
-                              className="w-full rounded border border-card-border object-contain bg-white"
-                            />
-                          </a>
-                        ) : (
-                          <div className="w-full h-32 rounded border border-card-border flex items-center justify-center">
-                            <span className="text-xs text-muted">No image</span>
-                          </div>
-                        )}
+              ) : (
+                <div className="space-y-8 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-px before:bg-outline-variant/30">
+                  {changes.map((change, index) => (
+                    <div key={change.id} className="relative pl-10">
+                      <div
+                        className={`absolute left-0 top-1.5 w-6 h-6 rounded-full flex items-center justify-center ring-4 ring-white ${
+                          index === 0
+                            ? "bg-primary"
+                            : "bg-surface-container-highest"
+                        }`}
+                      >
+                        <span
+                          className={`material-symbols-outlined text-[14px] ${
+                            index === 0 ? "text-on-primary" : "text-on-surface"
+                          }`}
+                        >
+                          {index === 0 ? "sync" : "check"}
+                        </span>
                       </div>
                       <div>
-                        <p className="text-xs text-success mb-1">After</p>
-                        {change.image_after_url ? (
-                          <a href={change.image_after_url} target="_blank" rel="noopener noreferrer">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={change.image_after_url}
-                              alt="Ingredients label after change"
-                              className="w-full rounded border border-card-border object-contain bg-white"
-                            />
-                          </a>
-                        ) : (
-                          <div className="w-full h-32 rounded border border-card-border flex items-center justify-center">
-                            <span className="text-xs text-muted">No image</span>
+                        <p className="font-headline font-bold text-on-surface">
+                          Change #{changes.length - index}
+                        </p>
+                        <p className="text-xs text-on-surface-variant mb-2">
+                          {change.changed_at
+                            ? new Date(change.changed_at).toLocaleDateString("en-US", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })
+                            : "Unknown date"}
+                          {change.off_revision && ` \u00b7 Revision #${change.off_revision}`}
+                        </p>
+
+                        {/* Before/After Label Photos */}
+                        {(change.image_before_url || change.image_after_url) && (
+                          <div className="grid grid-cols-2 gap-4 mb-3">
+                            {change.image_before_url && (
+                              <a href={change.image_before_url} target="_blank" rel="noopener noreferrer">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={change.image_before_url}
+                                  alt="Before"
+                                  className="w-full rounded-lg border border-outline-variant/10 object-contain bg-white"
+                                />
+                              </a>
+                            )}
+                            {change.image_after_url && (
+                              <a href={change.image_after_url} target="_blank" rel="noopener noreferrer">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={change.image_after_url}
+                                  alt="After"
+                                  className="w-full rounded-lg border border-outline-variant/10 object-contain bg-white"
+                                />
+                              </a>
+                            )}
                           </div>
+                        )}
+
+                        {/* Diff */}
+                        {change.ingredients_before && change.ingredients_after ? (
+                          <div className="bg-surface-container-low rounded-lg p-3">
+                            <DiffView
+                              before={change.ingredients_before}
+                              after={change.ingredients_after}
+                            />
+                          </div>
+                        ) : (
+                          <p className="text-sm text-on-surface-variant italic">
+                            Diff data unavailable
+                          </p>
                         )}
                       </div>
                     </div>
-                  </div>
-                )}
-                {/* Text Diff */}
-                <div className="border-t border-card-border pt-3">
-                  {change.ingredients_before && change.ingredients_after ? (
-                    <DiffView
-                      before={change.ingredients_before}
-                      after={change.ingredients_after}
-                    />
-                  ) : (
-                    <p className="text-sm text-muted italic">
-                      Diff data unavailable
-                    </p>
-                  )}
+                  ))}
                 </div>
-                {/* Legend */}
-                <div className="flex gap-4 mt-3 text-xs">
-                  <span className="flex items-center gap-1">
-                    <span className="w-3 h-3 bg-success/20 border border-success/30 rounded" />
-                    Added
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-3 h-3 bg-danger/20 border border-danger/30 rounded" />
-                    Removed
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-3 h-3 bg-muted/20 border border-muted/30 rounded" />
-                    Unchanged
-                  </span>
-                </div>
-              </div>
-            ))}
+              )}
+            </div>
           </div>
-        )}
-      </section>
-    </div>
+        </div>
+      </div>
+    </section>
   );
 }

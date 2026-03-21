@@ -12,7 +12,7 @@ export default function DiffView({
   const parts: DiffPart[] = computeIngredientDiff(before, after);
 
   return (
-    <div className="font-mono text-sm leading-relaxed">
+    <div className="font-body text-sm leading-relaxed flex flex-wrap gap-1">
       {parts.map((part, i) => {
         if (part.added) {
           return (

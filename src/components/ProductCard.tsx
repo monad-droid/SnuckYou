@@ -11,35 +11,36 @@ export default function ProductCard({
   const imageUrl = getProductImageUrl(product);
 
   return (
-    <Link
-      href={`/product/${product.code}`}
-      className="bg-card border border-card-border rounded-lg overflow-hidden hover:border-accent/50 transition-colors group"
-    >
-      <div className="aspect-square bg-black/30 relative flex items-center justify-center">
+    <Link href={`/product/${product.code}`} className="group cursor-pointer block">
+      <div className="aspect-square rounded-2xl bg-surface-container mb-4 overflow-hidden relative">
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={imageUrl}
             alt={product.product_name || "Product"}
-            className="object-contain w-full h-full p-4"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
-          <div className="text-muted text-sm">No image</div>
+          <div className="w-full h-full flex items-center justify-center text-on-surface-variant text-sm">
+            No image
+          </div>
         )}
-        {hasChanges && (
-          <span className="absolute top-2 right-2 bg-danger text-white text-xs px-2 py-1 rounded-full font-bold">
-            CHANGED
-          </span>
-        )}
+        <div
+          className={`absolute top-3 right-3 botanical-blur text-[10px] px-2 py-1 rounded-full font-bold uppercase ${
+            hasChanges
+              ? "bg-error-container text-on-error-container"
+              : "bg-white/90 text-primary"
+          }`}
+        >
+          {hasChanges ? "Modified" : "No Changes"}
+        </div>
       </div>
-      <div className="p-3">
-        <h3 className="font-semibold text-foreground text-sm truncate group-hover:text-accent transition-colors">
-          {product.product_name || "Unknown Product"}
-        </h3>
-        <p className="text-xs text-muted truncate">
-          {product.brands || "Unknown Brand"}
-        </p>
-      </div>
+      <h3 className="font-headline font-bold text-on-surface truncate">
+        {product.product_name || "Unknown Product"}
+      </h3>
+      <p className="font-body text-sm text-on-surface-variant truncate">
+        {product.brands || "Unknown Brand"}
+      </p>
     </Link>
   );
 }

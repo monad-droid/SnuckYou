@@ -1,23 +1,12 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
 import "./globals.css";
 import Header from "@/components/Header";
-
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
-});
+import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "SnuckYou — We watch what they snuck in",
   description:
-    "See when food and personal care product ingredients are quietly changed by manufacturers.",
+    "Transparency in every bite. Track ingredient shifts, additive changes, and formula updates across thousands of food brands.",
 };
 
 export default function RootLayout({
@@ -27,11 +16,23 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+      <head>
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link
+          href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&family=Inter:wght@400;500;600&display=swap"
+          rel="stylesheet"
+        />
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="bg-background font-body text-on-background min-h-screen flex flex-col antialiased">
         <Header />
-        <main className="max-w-6xl mx-auto px-4 py-6">{children}</main>
+        <main className="flex-grow">{children}</main>
+        <Footer />
       </body>
     </html>
   );

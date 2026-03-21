@@ -1,4 +1,4 @@
-import { getProduct, getProductImageUrl } from "@/lib/openfoodfacts";
+import { getProduct, getProductImageUrl, getProductImages } from "@/lib/openfoodfacts";
 import { supabase, IngredientChange } from "@/lib/supabase";
 import DiffView from "@/components/DiffView";
 import { notFound } from "next/navigation";
@@ -28,6 +28,7 @@ export default async function ProductPage({
 
   const changes = await getChangeHistory(params.barcode);
   const imageUrl = getProductImageUrl(product);
+  const allImages = getProductImages(product);
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
@@ -80,6 +81,36 @@ export default async function ProductPage({
           )}
         </div>
       </section>
+
+      {/* Product Photos */}
+      {allImages.length > 1 && (
+        <section>
+          <h2 className="text-lg font-bold text-foreground mb-3">
+            Product Photos
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {allImages.map((img) => (
+              <a
+                key={img.label}
+                href={img.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-card border border-card-border rounded-lg overflow-hidden hover:border-accent transition-colors"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img.url}
+                  alt={`${product.product_name} - ${img.label}`}
+                  className="object-contain w-full h-48 p-2"
+                />
+                <div className="text-center text-xs text-muted py-2 border-t border-card-border">
+                  {img.label}
+                </div>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Change History */}
       <section>

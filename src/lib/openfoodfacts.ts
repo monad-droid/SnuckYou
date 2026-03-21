@@ -7,6 +7,8 @@ export type OFFProduct = {
   image_url?: string;
   image_front_url?: string;
   image_front_small_url?: string;
+  image_ingredients_url?: string;
+  image_nutrition_url?: string;
   categories_tags?: string[];
   countries_tags?: string[];
   last_modified_t?: number;
@@ -35,7 +37,7 @@ export async function searchProducts(
     page: String(page),
     page_size: "24",
     fields:
-      "code,product_name,brands,ingredients_text,image_url,image_front_url,image_front_small_url,categories_tags,last_modified_t,rev",
+      "code,product_name,brands,ingredients_text,image_url,image_front_url,image_front_small_url,image_ingredients_url,image_nutrition_url,categories_tags,last_modified_t,rev",
   });
 
   const res = await fetch(`${OFF_API_BASE}/cgi/search.pl?${params}`, {
@@ -69,4 +71,13 @@ export function getProductImageUrl(product: OFFProduct): string | null {
     product.image_front_small_url ||
     null
   );
+}
+
+export function getProductImages(product: OFFProduct): { label: string; url: string }[] {
+  const images: { label: string; url: string }[] = [];
+  const front = product.image_front_url || product.image_url;
+  if (front) images.push({ label: "Front", url: front });
+  if (product.image_ingredients_url) images.push({ label: "Ingredients", url: product.image_ingredients_url });
+  if (product.image_nutrition_url) images.push({ label: "Nutrition", url: product.image_nutrition_url });
+  return images;
 }

@@ -67,6 +67,8 @@ export type IngredientChange = {
   brand: string | null;
   ingredients_before: string | null;
   ingredients_after: string | null;
+  image_before_url: string | null;
+  image_after_url: string | null;
   changed_at: string | null;
   off_revision: number | null;
   detected_at: string;

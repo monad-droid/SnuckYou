@@ -185,6 +185,49 @@ export default async function ProductPage({
                     )}
                   </div>
                 </div>
+                {/* Before/After Label Photos */}
+                {(change.image_before_url || change.image_after_url) && (
+                  <div className="border-t border-card-border pt-3">
+                    <p className="text-xs font-medium text-muted mb-2">Label Photos</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-danger mb-1">Before</p>
+                        {change.image_before_url ? (
+                          <a href={change.image_before_url} target="_blank" rel="noopener noreferrer">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={change.image_before_url}
+                              alt="Ingredients label before change"
+                              className="w-full rounded border border-card-border object-contain bg-white"
+                            />
+                          </a>
+                        ) : (
+                          <div className="w-full h-32 rounded border border-card-border flex items-center justify-center">
+                            <span className="text-xs text-muted">No image</span>
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs text-success mb-1">After</p>
+                        {change.image_after_url ? (
+                          <a href={change.image_after_url} target="_blank" rel="noopener noreferrer">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={change.image_after_url}
+                              alt="Ingredients label after change"
+                              className="w-full rounded border border-card-border object-contain bg-white"
+                            />
+                          </a>
+                        ) : (
+                          <div className="w-full h-32 rounded border border-card-border flex items-center justify-center">
+                            <span className="text-xs text-muted">No image</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* Text Diff */}
                 <div className="border-t border-card-border pt-3">
                   {change.ingredients_before && change.ingredients_after ? (
                     <DiffView

@@ -37,6 +37,7 @@ type DeltaProduct = {
   ingredients_text?: string;
   ingredients?: unknown[];
   image_url?: string;
+  image_ingredients_url?: string;
   categories_tags?: string[];
   last_modified_t?: number;
   rev?: number;
@@ -55,7 +56,7 @@ async function processProduct(product: DeltaProduct, stats: Stats) {
 
   const { data: existing, error: selectError } = await supabase
     .from("products")
-    .select("barcode, ingredients_text")
+    .select("barcode, ingredients_text, image_ingredients_url")
     .eq("barcode", product.code)
     .maybeSingle();
 
@@ -75,6 +76,8 @@ async function processProduct(product: DeltaProduct, stats: Stats) {
         brand: product.brands,
         ingredients_before: oldIngredients,
         ingredients_after: newIngredients,
+        image_before_url: existing.image_ingredients_url || null,
+        image_after_url: product.image_ingredients_url || null,
         changed_at: product.last_modified_t
           ? new Date(product.last_modified_t * 1000).toISOString()
           : new Date().toISOString(),
@@ -84,20 +87,22 @@ async function processProduct(product: DeltaProduct, stats: Stats) {
       else stats.errors++;
     }
 
-    // Only update the ingredients text for future comparisons
+    // Only update the ingredients text + image for future comparisons
     await supabase
       .from("products")
       .update({
         ingredients_text: product.ingredients_text,
+        image_ingredients_url: product.image_ingredients_url || existing.image_ingredients_url,
         last_modified_t: product.last_modified_t,
         updated_at: new Date().toISOString(),
       })
       .eq("barcode", product.code);
   } else {
-    // Store minimal record: just barcode + ingredients for future comparison
+    // Store minimal record: barcode + ingredients + image for future comparison
     const { error } = await supabase.from("products").insert({
       barcode: product.code,
       ingredients_text: product.ingredients_text,
+      image_ingredients_url: product.image_ingredients_url,
       last_modified_t: product.last_modified_t,
     });
     if (!error) stats.newProducts++;

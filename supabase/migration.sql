@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS products (
   ingredients_text text,
   ingredients_json jsonb,
   image_url text,
+  image_ingredients_url text,
   categories text,
   last_modified_t bigint,
   rev integer,
@@ -25,6 +26,8 @@ CREATE TABLE IF NOT EXISTS ingredient_changes (
   brand text,
   ingredients_before text,
   ingredients_after text,
+  image_before_url text,
+  image_after_url text,
   changed_at timestamptz,
   off_revision integer,
   detected_at timestamptz DEFAULT now()

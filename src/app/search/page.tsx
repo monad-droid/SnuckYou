@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { searchProducts, getProduct } from "@/lib/openfoodfacts";
 import { supabase } from "@/lib/supabase";
 import SearchBar from "@/components/SearchBar";
@@ -24,25 +25,21 @@ async function getBarcodesWithChanges(
   }
 }
 
-export default async function SearchPage({
-  searchParams,
-}: {
-  searchParams: { q?: string; page?: string };
-}) {
-  const query = searchParams.q || "";
-  const page = parseInt(searchParams.page || "1", 10);
+function ProductGridSkeleton() {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="animate-pulse">
+          <div className="aspect-square rounded-2xl bg-surface-container-high mb-4" />
+          <div className="h-4 w-3/4 bg-surface-container-high rounded mb-2" />
+          <div className="h-3 w-1/2 bg-surface-container-high rounded" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
-  if (!query.trim()) {
-    return (
-      <div className="max-w-7xl mx-auto px-6 py-24">
-        <SearchBar />
-        <p className="text-on-surface-variant text-center py-12">
-          Enter a search term to find products.
-        </p>
-      </div>
-    );
-  }
-
+async function ProductResults({ query, page }: { query: string; page: number }) {
   if (looksLikeBarcode(query.trim())) {
     const product = await getProduct(query.trim());
     if (product) {
@@ -62,36 +59,10 @@ export default async function SearchPage({
   const changedBarcodes = await getBarcodesWithChanges(barcodes);
 
   return (
-    <div className="py-24 max-w-7xl mx-auto px-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-        <div>
-          <h2 className="font-headline font-bold text-3xl text-primary">
-            Search Results
-          </h2>
-          <p className="font-body text-on-surface-variant">
-            Showing {filteredProducts.length} products for &ldquo;{query}&rdquo;
-          </p>
-        </div>
-      </div>
-
-      {/* Data coverage banner */}
-      <div className="mb-8 bg-primary-fixed/30 border border-primary/10 rounded-2xl p-6">
-        <div className="flex items-start gap-4">
-          <span className="material-symbols-outlined text-primary mt-0.5">info</span>
-          <div>
-            <p className="font-body text-sm text-on-surface leading-relaxed">
-              Changes since <span className="font-bold">3/7/2025</span> will be listed below.
-              Unfortunately we were not tracking candy up until this point.
-              Our database will grow as our site stays live. Join the waitlist if
-              you&apos;d like to add your products to track in the future.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="mb-8">
-        <SearchBar initialQuery={query} />
-      </div>
+    <>
+      <p className="font-body text-on-surface-variant mb-8">
+        Showing {filteredProducts.length} products for &ldquo;{query}&rdquo;
+      </p>
 
       {filteredProducts.length === 0 ? (
         <p className="text-on-surface-variant text-center py-12">
@@ -128,6 +99,61 @@ export default async function SearchPage({
           </a>
         )}
       </div>
+    </>
+  );
+}
+
+export default async function SearchPage({
+  searchParams,
+}: {
+  searchParams: { q?: string; page?: string };
+}) {
+  const query = searchParams.q || "";
+  const page = parseInt(searchParams.page || "1", 10);
+
+  if (!query.trim()) {
+    return (
+      <div className="max-w-7xl mx-auto px-6 py-24">
+        <SearchBar />
+        <p className="text-on-surface-variant text-center py-12">
+          Enter a search term to find products.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="py-24 max-w-7xl mx-auto px-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+        <div>
+          <h2 className="font-headline font-bold text-3xl text-primary">
+            Search Results
+          </h2>
+        </div>
+      </div>
+
+      {/* Data coverage banner */}
+      <div className="mb-8 bg-primary-fixed/30 border border-primary/10 rounded-2xl p-6">
+        <div className="flex items-start gap-4">
+          <span className="material-symbols-outlined text-primary mt-0.5">info</span>
+          <div>
+            <p className="font-body text-sm text-on-surface leading-relaxed">
+              Changes since <span className="font-bold">3/7/2025</span> will be listed below.
+              Unfortunately we were not tracking candy up until this point.
+              Our database will grow as our site stays live. Join the waitlist if
+              you&apos;d like to add your products to track in the future.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-8">
+        <SearchBar initialQuery={query} />
+      </div>
+
+      <Suspense fallback={<ProductGridSkeleton />}>
+        <ProductResults query={query} page={page} />
+      </Suspense>
 
       {/* Waitlist Section */}
       <section className="mt-12 bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/10">

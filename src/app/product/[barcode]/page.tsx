@@ -24,10 +24,12 @@ export default async function ProductPage({
 }: {
   params: { barcode: string };
 }) {
-  const product = await getProduct(params.barcode);
+  const [product, changes] = await Promise.all([
+    getProduct(params.barcode),
+    getChangeHistory(params.barcode),
+  ]);
   if (!product) notFound();
 
-  const changes = await getChangeHistory(params.barcode);
   const imageUrl = getProductImageUrl(product);
   const allImages = getProductImages(product);
 

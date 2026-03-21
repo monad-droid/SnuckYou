@@ -37,7 +37,7 @@ export default async function Home() {
           <SearchBar large />
         </div>
         <p className="text-xs text-muted mt-4">
-          Search by product name or brand — powered by Open Food Facts
+          Search by product name, brand, or UPC — powered by Open Food Facts
         </p>
       </section>
 

@@ -6,7 +6,8 @@ export type DiffPart = {
 
 /**
  * Split ingredient text into individual ingredients.
- * Handles commas inside parentheses (e.g. "Protein Blend (Pea, Hemp)").
+ * Handles commas and semicolons as separators (European lists often use ";").
+ * Preserves content inside parentheses (e.g. "Protein Blend (Pea, Hemp)").
  */
 function parseIngredients(text: string): string[] {
   const results: string[] = [];
@@ -14,10 +15,10 @@ function parseIngredients(text: string): string[] {
   let depth = 0;
 
   for (const char of text) {
-    if (char === "(") depth++;
-    else if (char === ")") depth--;
+    if (char === "(" || char === "[") depth++;
+    else if (char === ")" || char === "]") depth--;
 
-    if (char === "," && depth === 0) {
+    if ((char === "," || char === ";") && depth === 0) {
       const trimmed = current.trim();
       if (trimmed) results.push(trimmed);
       current = "";
@@ -32,15 +33,16 @@ function parseIngredients(text: string): string[] {
 }
 
 /**
- * Normalize an ingredient for exact matching.
- * Only normalizes casing, whitespace, and trailing punctuation — NOT the words
- * themselves, so "TOMATOES" and "Roma tomato paste" remain different.
+ * Normalize an ingredient for matching.
+ * Normalizes casing, whitespace, trailing/leading punctuation, and
+ * percentage prefixes (e.g. "30 % Weizenfladen" → "weizenfladen").
  */
 function normalizeIngredient(s: string): string {
   return s
     .toLowerCase()
     .replace(/\s+/g, " ")
     .replace(/[.,;:]+$/, "")
+    .replace(/^\d+[\d.,]*\s*%?\s*/, "") // strip leading percentages like "30 %"
     .trim();
 }
 

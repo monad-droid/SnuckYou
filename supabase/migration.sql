@@ -33,6 +33,17 @@ CREATE TABLE IF NOT EXISTS ingredient_changes (
   detected_at timestamptz DEFAULT now()
 );
 
+-- AI verdict columns for ingredient change analysis
+ALTER TABLE ingredient_changes ADD COLUMN IF NOT EXISTS ai_verdict_category text;
+ALTER TABLE ingredient_changes ADD COLUMN IF NOT EXISTS ai_verdict_explanation text;
+ALTER TABLE ingredient_changes ADD COLUMN IF NOT EXISTS ai_verdict_confidence integer;
+ALTER TABLE ingredient_changes ADD COLUMN IF NOT EXISTS ai_analyzed_at timestamptz;
+
+-- Policy for service role to update ingredient_changes (for AI verdicts)
+CREATE POLICY "Allow service role update on ingredient_changes"
+  ON ingredient_changes FOR UPDATE
+  USING (true);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode);
 CREATE INDEX IF NOT EXISTS idx_changes_barcode ON ingredient_changes(barcode);

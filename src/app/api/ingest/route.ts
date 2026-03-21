@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isSignificantChange } from "@/lib/diff";
+import { analyzeIngredientChange } from "@/lib/hf-analysis";
 import { gunzipSync } from "zlib";
 
 // Allow up to 300s for this route (processes multiple delta files)
@@ -75,6 +76,21 @@ async function processProduct(
         if (!stats.firstError) stats.firstError = `insert change: ${changeErr.message}`;
       } else {
         stats.changes++;
+
+        // Run AI analysis on the ingredient change
+        const verdict = await analyzeIngredientChange(oldIngredients, newIngredients);
+        if (verdict) {
+          await supabase
+            .from("ingredient_changes")
+            .update({
+              ai_verdict_category: verdict.category,
+              ai_verdict_explanation: verdict.explanation,
+              ai_verdict_confidence: verdict.confidence,
+              ai_analyzed_at: new Date().toISOString(),
+            })
+            .eq("barcode", product.code)
+            .eq("off_revision", product.rev);
+        }
       }
     }
 

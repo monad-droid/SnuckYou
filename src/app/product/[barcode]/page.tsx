@@ -1,6 +1,7 @@
 import { getProduct, getProductImageUrl, getProductImages } from "@/lib/openfoodfacts";
 import { supabase, IngredientChange } from "@/lib/supabase";
 import DiffView from "@/components/DiffView";
+import VerdictBadge from "@/components/VerdictBadge";
 import { notFound } from "next/navigation";
 
 async function getChangeHistory(barcode: string): Promise<IngredientChange[]> {
@@ -231,6 +232,15 @@ export default async function ProductPage({
                             Diff data unavailable
                           </p>
                         )}
+
+                        {/* AI Verdict */}
+                        <div className="mt-3">
+                          <VerdictBadge
+                            category={change.ai_verdict_category}
+                            explanation={change.ai_verdict_explanation}
+                            confidence={change.ai_verdict_confidence}
+                          />
+                        </div>
                       </div>
                     </div>
                   ))}

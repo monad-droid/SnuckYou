@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { IngredientChange } from "@/lib/supabase";
 import { summarizeChange } from "@/lib/diff";
+import VerdictBadge from "@/components/VerdictBadge";
 
 function formatTimeAgo(dateStr: string): string {
   const now = new Date();
@@ -99,7 +100,14 @@ export default function ChangeFeed({
               )}
             </div>
 
-            <span className="block w-full py-2 text-primary font-bold border border-primary/10 rounded-lg hover:bg-primary/5 transition-colors text-center">
+            <VerdictBadge
+              category={change.ai_verdict_category}
+              explanation={change.ai_verdict_explanation}
+              confidence={change.ai_verdict_confidence}
+              compact
+            />
+
+            <span className="block w-full py-2 text-primary font-bold border border-primary/10 rounded-lg hover:bg-primary/5 transition-colors text-center mt-4">
               See Full Scrutiny
             </span>
           </Link>

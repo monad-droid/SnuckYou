@@ -72,4 +72,8 @@ export type IngredientChange = {
   changed_at: string | null;
   off_revision: number | null;
   detected_at: string;
+  ai_verdict_category: string | null;
+  ai_verdict_explanation: string | null;
+  ai_verdict_confidence: number | null;
+  ai_analyzed_at: string | null;
 };

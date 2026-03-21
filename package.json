@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@huggingface/inference": "^4.13.15",
     "@supabase/supabase-js": "^2.99.3",
     "diff": "^8.0.3",
     "dotenv": "^17.3.1",

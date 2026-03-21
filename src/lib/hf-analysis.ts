@@ -1,5 +1,3 @@
-import { HfInference } from "@huggingface/inference";
-
 export type VerdictCategory =
   | "Consumer Benefit"
   | "Cost Cutting"
@@ -22,7 +20,8 @@ const VALID_CATEGORIES: VerdictCategory[] = [
 const MODEL_ID =
   process.env.HF_MODEL_ID || "HuggingFaceH4/zephyr-7b-beta";
 
-const SYSTEM_PROMPT = `You are a food industry analyst. Given a before/after ingredient list for a food product, classify the change into exactly one category and provide a brief explanation (1-2 sentences). Also provide a confidence score from 0 to 100.
+const PROMPT_TEMPLATE = `<|system|>
+You are a food industry analyst. Given a before/after ingredient list for a food product, classify the change into exactly one category and provide a brief explanation (1-2 sentences). Also provide a confidence score from 0 to 100.
 
 Categories:
 - "Consumer Benefit": Healthier ingredients, removal of artificial additives, organic upgrades, cleaner label
@@ -30,16 +29,17 @@ Categories:
 - "Health Concern": Addition of known allergens, controversial additives, artificial colors/preservatives, or higher sugar/sodium content
 - "Neutral": Minor reformulation, supplier name change, reordering without meaningful impact, or ambiguous change
 
-Respond ONLY with valid JSON: {"category": "<one of the four>", "explanation": "<1-2 sentences>", "confidence": <0-100>}`;
-
-function buildUserPrompt(before: string, after: string): string {
-  return `BEFORE: ${before.slice(0, 1500)}\nAFTER: ${after.slice(0, 1500)}`;
-}
+Respond ONLY with valid JSON: {"category": "<one of the four>", "explanation": "<1-2 sentences>", "confidence": <0-100>}</s>
+<|user|>
+BEFORE: {{BEFORE}}
+AFTER: {{AFTER}}</s>
+<|assistant|>
+`;
 
 function parseVerdict(raw: string): IngredientVerdict | null {
   // Try direct JSON parse first
   try {
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(raw.trim());
     if (parsed.category && VALID_CATEGORIES.includes(parsed.category)) {
       return {
         category: parsed.category,
@@ -106,30 +106,48 @@ export async function analyzeIngredientChange(
 
   callCount++;
 
+  const prompt = PROMPT_TEMPLATE
+    .replace("{{BEFORE}}", before.slice(0, 1500))
+    .replace("{{AFTER}}", after.slice(0, 1500));
+
   try {
-    const hf = new HfInference(token);
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const res = await fetch(
+      `https://api-inference.huggingface.co/models/${MODEL_ID}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          inputs: prompt,
+          parameters: {
+            max_new_tokens: 300,
+            temperature: 0.1,
+            return_full_text: false,
+          },
+        }),
+        signal: AbortSignal.timeout(30000),
+      }
+    );
 
-    const response = await hf.chatCompletion({
-      model: MODEL_ID,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: buildUserPrompt(before, after) },
-      ],
-      max_tokens: 300,
-      temperature: 0.1,
-      signal: controller.signal,
-    });
+    if (!res.ok) {
+      const body = await res.text();
+      console.error(`[hf-analysis] HTTP ${res.status}: ${body}`);
+      return null;
+    }
 
-    clearTimeout(timeout);
+    const data = await res.json();
+    const content = data?.[0]?.generated_text;
+    if (!content) {
+      console.error("[hf-analysis] No generated_text in response:", JSON.stringify(data));
+      return null;
+    }
 
-    const content = response.choices?.[0]?.message?.content;
-    if (!content) return null;
-
+    console.log("[hf-analysis] Raw response:", content.slice(0, 200));
     return parseVerdict(content);
   } catch (err) {
-    console.error(`[hf-analysis] Full error:`, JSON.stringify(err, Object.getOwnPropertyNames(err as object), 2));
+    console.error("[hf-analysis] Error:", err instanceof Error ? err.message : err);
     return null;
   }
 }

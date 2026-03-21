@@ -81,6 +81,7 @@ export default async function SearchPage({
           <div>
             <p className="font-body text-sm text-on-surface leading-relaxed">
               Changes since <span className="font-bold">3/7/2025</span> will be listed below.
+              Unfortunately we were not tracking candy up until this point.
               Our database will grow as our site stays live. Join the waitlist if
               you&apos;d like to add your products to track in the future.
             </p>

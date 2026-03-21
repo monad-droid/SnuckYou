@@ -112,7 +112,7 @@ export async function analyzeIngredientChange(
 
   try {
     const res = await fetch(
-      `https://api-inference.huggingface.co/models/${MODEL_ID}`,
+      `https://router.huggingface.co/hf-inference/models/${MODEL_ID}`,
       {
         method: "POST",
         headers: {

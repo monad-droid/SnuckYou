@@ -2,6 +2,7 @@
 /**
  * Process ALL unprocessed delta files.
  * Streams large files line-by-line to avoid memory issues.
+ * Retries failed downloads with exponential backoff.
  *
  * Usage:
  *   npx tsx scripts/ingest-deltas.ts          (local)
@@ -12,6 +13,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createGunzip } from "zlib";
 import { createInterface } from "readline";
 import { Readable } from "stream";
+import { pipeline } from "stream/promises";
 import { isSignificantChange } from "../src/lib/diff";
 import * as dotenv from "dotenv";
 import * as path from "path";
@@ -29,6 +31,8 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const BATCH_SIZE = 10;
+const MAX_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 5000; // 5s, 10s, 20s
 
 type DeltaProduct = {
   code?: string;
@@ -110,6 +114,84 @@ async function processProduct(product: DeltaProduct, stats: Stats) {
   }
 }
 
+async function streamDeltaFile(
+  filename: string,
+  stats: Stats,
+): Promise<{ totalLines: number; completed: boolean }> {
+  const deltaUrl = `https://static.openfoodfacts.org/data/delta/${filename}`;
+
+  const deltaRes = await fetch(deltaUrl, {
+    headers: { "User-Agent": "SnuckYou/1.0" },
+  });
+
+  if (!deltaRes.ok || !deltaRes.body) {
+    throw new Error(`HTTP ${deltaRes.status}`);
+  }
+
+  const gunzip = createGunzip();
+  const nodeStream = Readable.fromWeb(deltaRes.body as import("stream/web").ReadableStream);
+
+  // Attach error handlers so stream errors don't crash the process
+  nodeStream.on("error", () => { /* handled below via pipeline */ });
+  gunzip.on("error", () => { /* handled below via pipeline */ });
+
+  const rl = createInterface({ input: gunzip, crlfDelay: Infinity });
+
+  let batch: DeltaProduct[] = [];
+  let totalLines = 0;
+  let streamError: Error | null = null;
+
+  // Use pipeline for proper error propagation, but we still read line-by-line
+  const pipelinePromise = pipeline(nodeStream, gunzip).catch((err) => {
+    streamError = err;
+  });
+
+  try {
+    for await (const line of rl) {
+      totalLines++;
+      try {
+        const p: DeltaProduct = JSON.parse(line);
+        if (!p.code || !p.ingredients_text) continue;
+        batch.push(p);
+
+        if (batch.length >= BATCH_SIZE) {
+          await Promise.all(
+            batch.map((product) => processProduct(product, stats).catch(() => { stats.errors++; }))
+          );
+          batch = [];
+        }
+      } catch {
+        stats.errors++;
+      }
+
+      if (totalLines % 5000 === 0) {
+        console.log(`    ${totalLines.toLocaleString()} lines | ${stats.processed} processed | ${stats.changes} changes | ${stats.newProducts} new`);
+      }
+    }
+  } catch (err) {
+    // readline iterator can throw on stream error — that's OK, we still processed lines up to this point
+    streamError = err instanceof Error ? err : new Error(String(err));
+  }
+
+  // Flush remaining batch (process whatever we got before the error)
+  if (batch.length > 0) {
+    await Promise.all(
+      batch.map((product) => processProduct(product, stats).catch(() => { stats.errors++; }))
+    );
+  }
+
+  await pipelinePromise;
+
+  console.log(`    ${totalLines.toLocaleString()} lines streamed so far`);
+
+  if (streamError) {
+    console.warn(`  Stream interrupted: ${streamError.message}`);
+    return { totalLines, completed: false };
+  }
+
+  return { totalLines, completed: true };
+}
+
 async function processDeltaFile(filename: string): Promise<Stats> {
   const stats: Stats = { processed: 0, changes: 0, newProducts: 0, errors: 0 };
   const deltaUrl = `https://static.openfoodfacts.org/data/delta/${filename}`;
@@ -119,56 +201,45 @@ async function processDeltaFile(filename: string): Promise<Stats> {
     const headRes = await fetch(deltaUrl, { method: "HEAD", headers: { "User-Agent": "SnuckYou/1.0" } });
     const contentLength = parseInt(headRes.headers.get("content-length") || "0", 10);
     const sizeMB = contentLength / (1024 * 1024);
-    console.log(`  Downloading (${sizeMB.toFixed(1)}MB compressed)...`);
+    console.log(`  Size: ${sizeMB.toFixed(1)}MB compressed`);
   } catch {
-    console.log(`  Downloading...`);
+    // ignore HEAD failure
   }
 
-  const deltaRes = await fetch(deltaUrl, {
-    headers: { "User-Agent": "SnuckYou/1.0" },
-  });
+  let completed = false;
 
-  if (!deltaRes.ok || !deltaRes.body) {
-    console.error(`  Failed to fetch ${filename}: ${deltaRes.status}`);
-    return stats;
-  }
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    if (attempt > 1) {
+      const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 2);
+      console.log(`  Retry ${attempt}/${MAX_RETRIES} after ${delay / 1000}s...`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
 
-  // Stream: fetch body → gunzip → readline (line-by-line, no memory blowup)
-  const gunzip = createGunzip();
-  const nodeStream = Readable.fromWeb(deltaRes.body as import("stream/web").ReadableStream);
-  const decompressed = nodeStream.pipe(gunzip);
-  const rl = createInterface({ input: decompressed, crlfDelay: Infinity });
+    console.log(`  Attempt ${attempt}: downloading & streaming...`);
 
-  let batch: DeltaProduct[] = [];
-  let totalLines = 0;
-
-  for await (const line of rl) {
-    totalLines++;
     try {
-      const p: DeltaProduct = JSON.parse(line);
-      if (!p.code || !p.ingredients_text) continue;
-      batch.push(p);
-
-      if (batch.length >= BATCH_SIZE) {
-        await Promise.all(
-          batch.map((product) => processProduct(product, stats).catch(() => { stats.errors++; }))
-        );
-        batch = [];
+      const result = await streamDeltaFile(filename, stats);
+      if (result.completed) {
+        completed = true;
+        break;
       }
-    } catch {
-      stats.errors++;
-    }
-
-    if (totalLines % 5000 === 0) {
-      console.log(`    ${totalLines.toLocaleString()} lines | ${stats.processed} processed | ${stats.changes} changes | ${stats.newProducts} new`);
+      // Stream was interrupted — retry will re-download but DB upserts are idempotent-ish
+      // (inserts may conflict but that's fine, we just count the error)
+      console.log(`  Attempt ${attempt} incomplete (${result.totalLines} lines before disconnect)`);
+    } catch (err) {
+      console.error(`  Attempt ${attempt} failed: ${err instanceof Error ? err.message : err}`);
     }
   }
 
-  // Flush remaining batch
-  if (batch.length > 0) {
-    await Promise.all(
-      batch.map((product) => processProduct(product, stats).catch(() => { stats.errors++; }))
-    );
+  if (!completed) {
+    console.error(`  All ${MAX_RETRIES} attempts failed for ${filename} — skipping`);
+    // Still record partial progress so we don't retry forever
+    await supabase.from("processed_deltas").insert({
+      filename,
+      products_processed: stats.processed,
+      changes_detected: stats.changes,
+    });
+    return stats;
   }
 
   // Record this delta as processed
@@ -178,7 +249,6 @@ async function processDeltaFile(filename: string): Promise<Stats> {
     changes_detected: stats.changes,
   });
 
-  console.log(`  ${totalLines.toLocaleString()} total lines scanned`);
   return stats;
 }
 

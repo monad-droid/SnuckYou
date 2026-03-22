@@ -13,7 +13,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createGunzip } from "zlib";
 import { createInterface } from "readline";
 import { Readable } from "stream";
-import { pipeline } from "stream/promises";
+
 import { isSignificantChange } from "../src/lib/diff";
 import * as dotenv from "dotenv";
 import * as path from "path";
@@ -131,20 +131,29 @@ async function streamDeltaFile(
   const gunzip = createGunzip();
   const nodeStream = Readable.fromWeb(deltaRes.body as import("stream/web").ReadableStream);
 
-  // Attach error handlers so stream errors don't crash the process
-  nodeStream.on("error", () => { /* handled below via pipeline */ });
-  gunzip.on("error", () => { /* handled below via pipeline */ });
+  let streamError: Error | null = null;
 
+  // Capture errors from both streams and close readline gracefully.
+  // The key issue: Readable.fromWeb emits 'error' when the socket dies,
+  // which propagates to gunzip, which propagates to readline as an
+  // unhandled error event that crashes the process. We must catch at
+  // every level and close readline to stop the for-await loop cleanly.
+  const onStreamError = (err: Error) => {
+    if (!streamError) streamError = err;
+    rl.close();
+    nodeStream.destroy();
+    gunzip.destroy();
+  };
+
+  nodeStream.on("error", onStreamError);
+  gunzip.on("error", onStreamError);
+
+  nodeStream.pipe(gunzip);
   const rl = createInterface({ input: gunzip, crlfDelay: Infinity });
+  rl.on("error", onStreamError);
 
   let batch: DeltaProduct[] = [];
   let totalLines = 0;
-  let streamError: Error | null = null;
-
-  // Use pipeline for proper error propagation, but we still read line-by-line
-  const pipelinePromise = pipeline(nodeStream, gunzip).catch((err) => {
-    streamError = err;
-  });
 
   try {
     for await (const line of rl) {
@@ -169,8 +178,11 @@ async function streamDeltaFile(
       }
     }
   } catch (err) {
-    // readline iterator can throw on stream error — that's OK, we still processed lines up to this point
-    streamError = err instanceof Error ? err : new Error(String(err));
+    // readline async iterator can throw when the underlying stream errors —
+    // that's expected, we still processed all lines up to this point
+    if (!streamError) {
+      streamError = err instanceof Error ? err : new Error(String(err));
+    }
   }
 
   // Flush remaining batch (process whatever we got before the error)
@@ -179,8 +191,6 @@ async function streamDeltaFile(
       batch.map((product) => processProduct(product, stats).catch(() => { stats.errors++; }))
     );
   }
-
-  await pipelinePromise;
 
   console.log(`    ${totalLines.toLocaleString()} lines streamed so far`);
 

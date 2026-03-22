@@ -51,7 +51,7 @@ export default async function Home() {
             How It Works
           </h2>
           <p className="font-body text-on-surface-variant text-center max-w-2xl mx-auto mb-16">
-            SnuckYou monitors ingredient lists across thousands of food products
+            YouSnuck monitors ingredient lists across thousands of food products
             so you don&apos;t have to read the fine print.
           </p>
 

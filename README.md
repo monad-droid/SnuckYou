@@ -1,8 +1,8 @@
-# SnuckYou
+# YouSnuck
 
 **We watch what they snuck in.**
 
-A consumer transparency tool that catches companies quietly changing food and personal care product ingredients. SnuckYou monitors the [Open Food Facts](https://openfoodfacts.org) database daily for ingredient changes and surfaces them with clear before/after diffs.
+A consumer transparency tool that catches companies quietly changing food and personal care product ingredients. YouSnuck monitors the [Open Food Facts](https://openfoodfacts.org) database daily for ingredient changes and surfaces them with clear before/after diffs.
 
 ## How It Works
 
@@ -139,7 +139,7 @@ scripts/
 
 ## Data Source
 
-All product data comes from [Open Food Facts](https://openfoodfacts.org), a free, open, collaborative database of food products from around the world. SnuckYou uses their [daily delta exports](https://static.openfoodfacts.org/data/delta/) to track changes over time.
+All product data comes from [Open Food Facts](https://openfoodfacts.org), a free, open, collaborative database of food products from around the world. YouSnuck uses their [daily delta exports](https://static.openfoodfacts.org/data/delta/) to track changes over time.
 
 ## License
 

@@ -9,7 +9,7 @@ export default function Header() {
             href="/"
             className="text-2xl font-headline font-extrabold text-emerald-900 tracking-tighter"
           >
-            SnuckYou
+            YouSnuck
           </Link>
           <div className="hidden md:flex gap-6 items-center">
             <Link

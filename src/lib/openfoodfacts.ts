@@ -42,7 +42,7 @@ export async function searchProducts(
 
   const res = await fetch(`${OFF_API_BASE}/cgi/search.pl?${params}`, {
     next: { revalidate: 300 },
-    headers: { "User-Agent": "SnuckYou/1.0 (contact@snuckyou.app)" },
+    headers: { "User-Agent": "YouSnuck/1.0 (contact@yousnuck.app)" },
   });
 
   if (!res.ok) throw new Error(`OFF API error: ${res.status}`);
@@ -54,7 +54,7 @@ export async function getProduct(barcode: string): Promise<OFFProduct | null> {
     `${OFF_API_BASE}/api/v2/product/${encodeURIComponent(barcode)}.json`,
     {
       next: { revalidate: 300 },
-      headers: { "User-Agent": "SnuckYou/1.0 (contact@snuckyou.app)" },
+      headers: { "User-Agent": "YouSnuck/1.0 (contact@yousnuck.app)" },
     }
   );
 

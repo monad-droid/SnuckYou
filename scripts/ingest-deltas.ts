@@ -121,7 +121,7 @@ async function streamDeltaFile(
   const deltaUrl = `https://static.openfoodfacts.org/data/delta/${filename}`;
 
   const deltaRes = await fetch(deltaUrl, {
-    headers: { "User-Agent": "SnuckYou/1.0" },
+    headers: { "User-Agent": "YouSnuck/1.0" },
   });
 
   if (!deltaRes.ok || !deltaRes.body) {
@@ -198,7 +198,7 @@ async function processDeltaFile(filename: string): Promise<Stats> {
 
   // Check file size for logging
   try {
-    const headRes = await fetch(deltaUrl, { method: "HEAD", headers: { "User-Agent": "SnuckYou/1.0" } });
+    const headRes = await fetch(deltaUrl, { method: "HEAD", headers: { "User-Agent": "YouSnuck/1.0" } });
     const contentLength = parseInt(headRes.headers.get("content-length") || "0", 10);
     const sizeMB = contentLength / (1024 * 1024);
     console.log(`  Size: ${sizeMB.toFixed(1)}MB compressed`);
@@ -256,7 +256,7 @@ async function run() {
   console.log("[ingest] Fetching delta index...");
 
   const indexRes = await fetch("https://static.openfoodfacts.org/data/delta/index.txt", {
-    headers: { "User-Agent": "SnuckYou/1.0" },
+    headers: { "User-Agent": "YouSnuck/1.0" },
   });
   if (!indexRes.ok) {
     console.error("Failed to fetch delta index");

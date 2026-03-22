@@ -143,7 +143,7 @@ async function processDeltaFile(
 
   const deltaUrl = `https://static.openfoodfacts.org/data/delta/${filename}`;
   const deltaRes = await fetch(deltaUrl, {
-    headers: { "User-Agent": "SnuckYou/1.0" },
+    headers: { "User-Agent": "YouSnuck/1.0" },
     signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT),
   });
 
@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
     // 1. Get all available delta files
     const indexRes = await fetch(
       "https://static.openfoodfacts.org/data/delta/index.txt",
-      { headers: { "User-Agent": "SnuckYou/1.0" }, signal: AbortSignal.timeout(10000) }
+      { headers: { "User-Agent": "YouSnuck/1.0" }, signal: AbortSignal.timeout(10000) }
     );
     if (!indexRes.ok)
       return NextResponse.json({ error: "Failed to fetch delta index" }, { status: 502 });
@@ -284,5 +284,5 @@ export async function POST(request: NextRequest) {
 
 // GET endpoint for health check
 export async function GET() {
-  return NextResponse.json({ status: "ok", service: "snuckyou-ingest" });
+  return NextResponse.json({ status: "ok", service: "yousnuck-ingest" });
 }

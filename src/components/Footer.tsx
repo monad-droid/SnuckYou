@@ -4,10 +4,10 @@ export default function Footer() {
       <div className="flex flex-col md:flex-row justify-between items-center w-full px-8 py-12 max-w-7xl mx-auto">
         <div className="mb-8 md:mb-0">
           <span className="font-headline font-bold text-emerald-900 text-xl block mb-2">
-            SnuckYou
+            YouSnuck
           </span>
           <p className="font-body text-xs tracking-wide uppercase text-emerald-700">
-            &copy; 2024 SnuckYou. All rights reserved.
+            &copy; 2024 YouSnuck. All rights reserved.
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-8">

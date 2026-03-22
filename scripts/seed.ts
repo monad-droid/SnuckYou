@@ -57,7 +57,7 @@ async function seed() {
   console.log(`[seed] This will take a while — streaming line by line...`);
 
   const res = await fetch(DUMP_URL, {
-    headers: { "User-Agent": "SnuckYou/1.0 (seed script)" },
+    headers: { "User-Agent": "YouSnuck/1.0 (seed script)" },
   });
 
   if (!res.ok || !res.body) {

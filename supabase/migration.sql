@@ -1,4 +1,4 @@
--- SnuckYou Database Schema
+-- YouSnuck Database Schema
 -- Run this in Supabase SQL Editor to set up the database
 
 -- Current product baselines

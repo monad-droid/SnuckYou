@@ -33,6 +33,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const BATCH_SIZE = 10;
 const MAX_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 5000; // 5s, 10s, 20s
+const MAX_DELTA_SIZE_MB = 500; // Skip files larger than this — they're full dumps, not deltas
 
 type DeltaProduct = {
   code?: string;
@@ -202,18 +203,32 @@ async function streamDeltaFile(
   return { totalLines, completed: true };
 }
 
-async function processDeltaFile(filename: string): Promise<Stats> {
-  const stats: Stats = { processed: 0, changes: 0, newProducts: 0, errors: 0 };
+async function processDeltaFile(filename: string): Promise<Stats & { skipped?: boolean }> {
+  const stats: Stats & { skipped?: boolean } = { processed: 0, changes: 0, newProducts: 0, errors: 0 };
   const deltaUrl = `https://static.openfoodfacts.org/data/delta/${filename}`;
 
-  // Check file size for logging
+  // Check file size — skip massive files (full dumps, not true deltas)
+  let sizeMB = 0;
   try {
     const headRes = await fetch(deltaUrl, { method: "HEAD", headers: { "User-Agent": "YouSnuck/1.0" } });
     const contentLength = parseInt(headRes.headers.get("content-length") || "0", 10);
-    const sizeMB = contentLength / (1024 * 1024);
+    sizeMB = contentLength / (1024 * 1024);
     console.log(`  Size: ${sizeMB.toFixed(1)}MB compressed`);
   } catch {
-    // ignore HEAD failure
+    // ignore HEAD failure — proceed with download
+  }
+
+  if (sizeMB > MAX_DELTA_SIZE_MB) {
+    console.log(`  Skipping — file is ${sizeMB.toFixed(0)}MB, exceeds ${MAX_DELTA_SIZE_MB}MB limit (likely a full dump, not a delta)`);
+    console.log(`  Use 'npx tsx scripts/seed.ts' to load the full product database instead`);
+    // Mark as processed so we don't retry it every run
+    await supabase.from("processed_deltas").insert({
+      filename,
+      products_processed: 0,
+      changes_detected: 0,
+    });
+    stats.skipped = true;
+    return stats;
   }
 
   let completed = false;
@@ -296,6 +311,10 @@ async function run() {
 
     try {
       const result = await processDeltaFile(filename);
+      if (result.skipped) {
+        console.log("");
+        continue;
+      }
       totals.processed += result.processed;
       totals.changes += result.changes;
       totals.newProducts += result.newProducts;

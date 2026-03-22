@@ -1,5 +1,6 @@
 import SearchBar from "@/components/SearchBar";
 import ChangeFeed from "@/components/ChangeFeed";
+import WaitlistForm from "@/components/WaitlistForm";
 import { supabase, IngredientChange } from "@/lib/supabase";
 
 async function getRecentChanges(): Promise<IngredientChange[]> {
@@ -148,6 +149,26 @@ export default async function Home() {
             </div>
           </div>
           <ChangeFeed changes={recentChanges} />
+        </div>
+      </section>
+
+      {/* Waitlist CTA */}
+      <section className="py-24">
+        <div className="max-w-2xl mx-auto px-6 text-center">
+          <div className="bg-surface-container-lowest rounded-2xl p-10 border border-outline-variant/10">
+            <span className="material-symbols-outlined text-primary text-4xl mb-4 block">
+              notifications_active
+            </span>
+            <h2 className="font-headline font-bold text-3xl text-primary mb-3">
+              Stay in the Loop
+            </h2>
+            <p className="font-body text-on-surface-variant mb-8">
+              Get notified when we start tracking a product you care about. Tell
+              us what brands or products to watch and we&apos;ll let you know
+              when we spot a change.
+            </p>
+            <WaitlistForm />
+          </div>
         </div>
       </section>
     </>

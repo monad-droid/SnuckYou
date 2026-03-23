@@ -6,8 +6,6 @@ import { IngredientChange } from "@/lib/supabase";
 import { summarizeChange } from "@/lib/diff";
 import VerdictBadge from "@/components/VerdictBadge";
 
-const PAGE_SIZE = 12;
-
 function formatTimeAgo(dateStr: string): string {
   const now = new Date();
   const date = new Date(dateStr);
@@ -33,11 +31,31 @@ function parseChangeSummary(summary: string): { added: string[]; removed: string
 }
 
 export default function ChangeFeed({
-  changes,
+  changes: initialChanges,
+  initialPage = 1,
 }: {
   changes: IngredientChange[];
+  initialPage?: number;
 }) {
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [changes, setChanges] = useState<IngredientChange[]>(initialChanges);
+  const [page, setPage] = useState(initialPage);
+  const [hasMore, setHasMore] = useState(initialChanges.length >= 20);
+  const [loading, setLoading] = useState(false);
+
+  async function loadMore() {
+    setLoading(true);
+    try {
+      const nextPage = page + 1;
+      const res = await fetch(`/api/changes?page=${nextPage}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setChanges((prev) => [...prev, ...data.changes]);
+      setPage(nextPage);
+      setHasMore(data.hasMore);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   if (changes.length === 0) {
     return (
@@ -50,13 +68,10 @@ export default function ChangeFeed({
     );
   }
 
-  const visible = changes.slice(0, visibleCount);
-  const hasMore = visibleCount < changes.length;
-
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {visible.map((change) => {
+        {changes.map((change) => {
           const summary =
             change.ingredients_before && change.ingredients_after
               ? summarizeChange(change.ingredients_before, change.ingredients_after)
@@ -130,13 +145,11 @@ export default function ChangeFeed({
       {hasMore && (
         <div className="text-center mt-10">
           <button
-            onClick={(e) => {
-              e.preventDefault();
-              setVisibleCount((prev) => prev + PAGE_SIZE);
-            }}
-            className="px-8 py-3 bg-primary text-on-primary font-bold rounded-lg hover:bg-primary/90 transition-colors"
+            onClick={loadMore}
+            disabled={loading}
+            className="px-8 py-3 bg-primary text-on-primary font-bold rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
-            Show More ({changes.length - visibleCount} remaining)
+            {loading ? "Loading..." : "Show More"}
           </button>
         </div>
       )}

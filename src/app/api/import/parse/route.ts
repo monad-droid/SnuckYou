@@ -24,9 +24,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ items, rawLineCount: text.split("\n").length });
   } catch (err) {
-    console.error("PDF parse error:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("PDF parse error:", message, err);
     return NextResponse.json(
-      { error: "Failed to parse PDF" },
+      { error: `Failed to parse PDF: ${message}` },
       { status: 500 }
     );
   }

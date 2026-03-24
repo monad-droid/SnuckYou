@@ -41,9 +41,7 @@ export default function AuthButton() {
     setUser(null);
   };
 
-  if (loading) return null;
-
-  if (!user) {
+  if (loading || !user) {
     return (
       <button
         onClick={signIn}

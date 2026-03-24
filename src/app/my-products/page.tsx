@@ -16,12 +16,14 @@ export default function MyProductsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const timeout = setTimeout(() => setAuthLoading(false), 5000);
     supabase.auth.getUser().then((res: { data: { user: { id: string } | null } }) => {
       setUser(res.data.user ? { id: res.data.user.id } : null);
       setAuthLoading(false);
     }).catch(() => {
       setAuthLoading(false);
     });
+    return () => clearTimeout(timeout);
   }, [supabase.auth]);
 
   useEffect(() => {

@@ -5,6 +5,11 @@ import { analyzeIngredientChange } from "@/lib/ai-analysis";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
+// Allow up to 300s for backfill processing
+export const maxDuration = 300;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
@@ -28,7 +33,8 @@ export async function POST(request: NextRequest) {
     .is("ai_analyzed_at", null)
     .not("ingredients_before", "is", null)
     .not("ingredients_after", "is", null)
-    .limit(20);
+    .order("detected_at", { ascending: false })
+    .limit(30);
 
   if (fetchErr) {
     return NextResponse.json({ error: fetchErr.message }, { status: 500 });
@@ -41,7 +47,12 @@ export async function POST(request: NextRequest) {
   let analyzed = 0;
   let failed = 0;
 
-  for (const change of unanalyzed) {
+  for (let i = 0; i < unanalyzed.length; i++) {
+    const change = unanalyzed[i];
+
+    // Respect Groq rate limits (~30 req/min on free tier)
+    if (i > 0) await sleep(2500);
+
     const verdict = await analyzeIngredientChange(
       change.ingredients_before,
       change.ingredients_after
@@ -64,7 +75,6 @@ export async function POST(request: NextRequest) {
         analyzed++;
       }
     } else {
-      // Don't mark ai_analyzed_at so we can retry later
       failed++;
     }
   }

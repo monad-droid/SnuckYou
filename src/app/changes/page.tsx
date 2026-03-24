@@ -1,6 +1,5 @@
 import { Metadata } from "next";
 import ChangesTable from "@/components/ChangesTable";
-import { getSupabase, IngredientChange } from "@/lib/supabase";
 
 export const metadata: Metadata = {
   title: "Recent Changes",
@@ -8,35 +7,7 @@ export const metadata: Metadata = {
     "Track ingredient shifts, additive changes, and formula updates across thousands of food brands in real-time.",
 };
 
-export const dynamic = "force-dynamic";
-
-async function getInitialChanges(): Promise<{
-  changes: IngredientChange[];
-  totalCount: number;
-}> {
-  try {
-    const supabase = getSupabase();
-    if (!supabase) return { changes: [], totalCount: 0 };
-
-    const { data, error, count } = await supabase
-      .from("ingredient_changes")
-      .select("*", { count: "exact" })
-      .order("detected_at", { ascending: false })
-      .range(0, 24);
-
-    if (error) throw error;
-    return {
-      changes: (data as IngredientChange[]) || [],
-      totalCount: count ?? 0,
-    };
-  } catch {
-    return { changes: [], totalCount: 0 };
-  }
-}
-
-export default async function ChangesPage() {
-  const { changes, totalCount } = await getInitialChanges();
-
+export default function ChangesPage() {
   return (
     <div className="max-w-screen-2xl mx-auto px-6 md:px-12 pt-8 pb-24">
       {/* Hero Header */}
@@ -57,8 +28,8 @@ export default async function ChangesPage() {
         </div>
       </section>
 
-      {/* Table */}
-      <ChangesTable initialChanges={changes} initialTotalCount={totalCount} />
+      {/* Table — starts empty, fetches client-side */}
+      <ChangesTable initialChanges={[]} initialTotalCount={0} />
     </div>
   );
 }

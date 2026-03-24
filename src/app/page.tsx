@@ -1,28 +1,8 @@
 import SearchBar from "@/components/SearchBar";
-import ChangeFeed from "@/components/ChangeFeed";
+import HomeFeed from "@/components/HomeFeed";
 import WaitlistForm from "@/components/WaitlistForm";
-import { supabase, IngredientChange } from "@/lib/supabase";
 
-async function getRecentChanges(): Promise<IngredientChange[]> {
-  try {
-    const { data, error } = await supabase
-      .from("ingredient_changes")
-      .select("*")
-      .order("detected_at", { ascending: false })
-      .limit(20);
-
-    if (error) throw error;
-    return (data as IngredientChange[]) || [];
-  } catch {
-    return [];
-  }
-}
-
-export const dynamic = "force-dynamic";
-
-export default async function Home() {
-  const recentChanges = await getRecentChanges();
-
+export default function Home() {
   return (
     <>
       {/* Hero Section */}
@@ -52,7 +32,7 @@ export default async function Home() {
             How It Works
           </h2>
           <p className="font-body text-on-surface-variant text-center max-w-2xl mx-auto mb-16">
-            YouSnuck monitors ingredient lists across thousands of food products
+            You Snuck monitors ingredient lists across thousands of food products
             so you don&apos;t have to read the fine print.
           </p>
 
@@ -155,7 +135,7 @@ export default async function Home() {
               <span className="material-symbols-outlined text-sm">arrow_forward</span>
             </a>
           </div>
-          <ChangeFeed changes={recentChanges} />
+          <HomeFeed />
         </div>
       </section>
 

@@ -5,7 +5,10 @@ import Footer from "@/components/Footer";
 import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
-  title: "YouSnuck — We watch what they snuck in",
+  title: {
+    default: "YouSnuck — We watch what they snuck in",
+    template: "%s | YouSnuck",
+  },
   description:
     "Transparency in every bite. Track ingredient shifts, additive changes, and formula updates across thousands of food brands.",
 };

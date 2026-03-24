@@ -3,7 +3,7 @@ import ChangesTable from "@/components/ChangesTable";
 import { getSupabase, IngredientChange } from "@/lib/supabase";
 
 export const metadata: Metadata = {
-  title: "Recent Changes | YouSnuck",
+  title: "Recent Changes",
   description:
     "Track ingredient shifts, additive changes, and formula updates across thousands of food brands in real-time.",
 };

@@ -1,6 +1,19 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function Header() {
+  const pathname = usePathname();
+
+  const linkClass = (href: string) => {
+    const isActive =
+      href === "/" ? pathname === "/" : pathname.startsWith(href);
+    return isActive
+      ? "text-emerald-900 font-bold border-b-2 border-emerald-900 pb-1"
+      : "text-emerald-800/70 font-medium pb-1 hover:text-emerald-900 transition-colors duration-200";
+  };
+
   return (
     <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
       <nav className="flex items-center justify-between w-full px-6 py-4 max-w-7xl mx-auto">
@@ -12,16 +25,10 @@ export default function Header() {
             YouSnuck
           </Link>
           <div className="hidden md:flex gap-6 items-center">
-            <Link
-              href="/"
-              className="text-emerald-900 font-bold border-b-2 border-emerald-900 pb-1"
-            >
+            <Link href="/" className={linkClass("/")}>
               Browse
             </Link>
-            <Link
-              href="/changes"
-              className="text-emerald-800/70 font-medium pb-1 hover:text-emerald-900 transition-colors duration-200"
-            >
+            <Link href="/changes" className={linkClass("/changes")}>
               Recent Changes
             </Link>
           </div>

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     "Track ingredient shifts, additive changes, and formula updates across thousands of food brands in real-time.",
 };
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 async function getInitialChanges(): Promise<{
   changes: IngredientChange[];

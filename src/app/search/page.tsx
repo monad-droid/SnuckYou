@@ -47,10 +47,20 @@ async function ProductResults({ query, page }: { query: string; page: number }) 
     }
   }
 
-  const results = await searchProducts(query, page);
+  let results;
+  try {
+    results = await searchProducts(query, page);
+  } catch {
+    return (
+      <p className="text-on-surface-variant text-center py-12">
+        Search is temporarily unavailable. Please try again.
+      </p>
+    );
+  }
 
+  const products = results.products || [];
   const searchTerms = query.toLowerCase().split(/\s+/).filter(Boolean);
-  const filteredProducts = results.products.filter((p) => {
+  const filteredProducts = products.filter((p) => {
     const text = `${p.product_name || ""} ${p.brands || ""} ${(p.categories_tags || []).join(" ")}`.toLowerCase();
     return searchTerms.every((term) => text.includes(term));
   });

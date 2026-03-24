@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractReceiptItems } from "@/lib/receipt-parser";
+import { extractText } from "unpdf";
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,15 +15,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Only PDF files are supported" }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const buffer = new Uint8Array(await file.arrayBuffer());
+    const { text } = await extractText(buffer);
+    const fullText = Array.isArray(text) ? text.join("\n") : text;
 
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require("pdf-parse");
-    const { text } = await pdfParse(buffer);
+    const items = extractReceiptItems(fullText);
 
-    const items = extractReceiptItems(text);
-
-    return NextResponse.json({ items, rawLineCount: text.split("\n").length });
+    return NextResponse.json({ items, rawLineCount: fullText.split("\n").length });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("PDF parse error:", message, err);

@@ -10,12 +10,18 @@ export default function AuthButton() {
   const supabase = createBrowserClient();
 
   useEffect(() => {
-    supabase.auth.getUser().then((res: { data: { user: User | null } }) => {
-      setUser(res.data.user);
-      setLoading(false);
-    }).catch(() => {
-      setLoading(false);
-    });
+    // Race getUser against a 3s timeout so the button is always usable
+    const timeout = new Promise<{ data: { user: null } }>((resolve) =>
+      setTimeout(() => resolve({ data: { user: null } }), 3000)
+    );
+    Promise.race([supabase.auth.getUser(), timeout])
+      .then((res) => {
+        setUser(res.data.user);
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
 
     const {
       data: { subscription },
@@ -27,13 +33,17 @@ export default function AuthButton() {
     return () => subscription.unsubscribe();
   }, [supabase.auth]);
 
-  const signIn = () => {
-    supabase.auth.signInWithOAuth({
+  const signIn = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
+    // If Supabase returns a URL instead of auto-redirecting, navigate manually
+    if (!error && data?.url) {
+      window.location.href = data.url;
+    }
   };
 
   const signOut = async () => {

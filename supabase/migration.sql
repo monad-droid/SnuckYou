@@ -113,3 +113,33 @@ CREATE POLICY "Allow service role insert on waitlist"
 CREATE POLICY "Allow service role select on waitlist"
   ON waitlist FOR SELECT
   USING (true);
+
+-- User watchlist for tracking purchased products
+CREATE TABLE IF NOT EXISTS user_watchlist (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  barcode text NOT NULL,
+  product_name text,
+  brand text,
+  image_url text,
+  receipt_name text,
+  added_at timestamptz DEFAULT now(),
+  UNIQUE(user_id, barcode)
+);
+
+CREATE INDEX IF NOT EXISTS idx_watchlist_user ON user_watchlist(user_id);
+CREATE INDEX IF NOT EXISTS idx_watchlist_barcode ON user_watchlist(barcode);
+
+ALTER TABLE user_watchlist ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own watchlist"
+  ON user_watchlist FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own watchlist"
+  ON user_watchlist FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own watchlist"
+  ON user_watchlist FOR DELETE
+  USING (auth.uid() = user_id);

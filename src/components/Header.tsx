@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import AuthButton from "./AuthButton";
 
 export default function Header() {
   const pathname = usePathname();
@@ -31,6 +32,9 @@ export default function Header() {
             <Link href="/changes" className={linkClass("/changes")}>
               Recent Changes
             </Link>
+            <Link href="/my-products" className={linkClass("/my-products")}>
+              My Products
+            </Link>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -46,6 +50,7 @@ export default function Header() {
           >
             search
           </Link>
+          <AuthButton />
         </div>
       </nav>
     </header>

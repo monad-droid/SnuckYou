@@ -147,6 +147,13 @@ export default async function Home() {
                 Real-time alerts for formula modifications
               </p>
             </div>
+            <a
+              href="/changes"
+              className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-on-primary font-bold text-sm rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              View All Changes
+              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+            </a>
           </div>
           <ChangeFeed changes={recentChanges} />
         </div>

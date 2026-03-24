@@ -19,7 +19,7 @@ export default function Header() {
               Browse
             </Link>
             <Link
-              href="/#recent-changes"
+              href="/changes"
               className="text-emerald-800/70 font-medium pb-1 hover:text-emerald-900 transition-colors duration-200"
             >
               Recent Changes

@@ -13,6 +13,8 @@ export default function AuthButton() {
     supabase.auth.getUser().then((res: { data: { user: User | null } }) => {
       setUser(res.data.user);
       setLoading(false);
+    }).catch(() => {
+      setLoading(false);
     });
 
     const {

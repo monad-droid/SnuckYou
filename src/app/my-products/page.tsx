@@ -19,6 +19,8 @@ export default function MyProductsPage() {
     supabase.auth.getUser().then((res: { data: { user: { id: string } | null } }) => {
       setUser(res.data.user ? { id: res.data.user.id } : null);
       setAuthLoading(false);
+    }).catch(() => {
+      setAuthLoading(false);
     });
   }, [supabase.auth]);
 
@@ -30,6 +32,9 @@ export default function MyProductsPage() {
       .then((data) => {
         setWatchlist(data.watchlist || []);
         setChangeCounts(data.changeCounts || {});
+      })
+      .catch(() => {
+        // Watchlist fetch failed — show empty state
       })
       .finally(() => setLoading(false));
   }, [user]);

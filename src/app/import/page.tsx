@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabase-auth";
 import type { OFFProduct } from "@/lib/openfoodfacts";
 import type { ReceiptItem } from "@/lib/receipt-parser";
-import Link from "next/link";
+
 
 type MatchResult = {
   item: ReceiptItem;
@@ -84,13 +84,13 @@ export default function ImportPage() {
           results.push({
             item,
             product: result.product,
-            confirmed: result.product !== null, // Auto-confirm found products
+            confirmed: true, // Auto-confirm all receipt items
           });
         }
       } catch {
-        // If lookup fails, add items as not found
+        // If lookup fails, still add items
         for (const item of batch) {
-          results.push({ item, product: null, confirmed: false });
+          results.push({ item, product: null, confirmed: true });
         }
       }
 
@@ -110,7 +110,7 @@ export default function ImportPage() {
   };
 
   const saveWatchlist = async () => {
-    const confirmed = matches.filter((m) => m.confirmed && m.product);
+    const confirmed = matches.filter((m) => m.confirmed);
     if (confirmed.length === 0) return;
 
     setSaving(true);
@@ -120,12 +120,12 @@ export default function ImportPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: confirmed.map((m) => ({
-            barcode: m.product!.code,
-            product_name: m.product!.product_name || null,
-            brand: m.product!.brands || null,
+            barcode: m.product?.code || m.item.upc,
+            product_name: m.product?.product_name || null,
+            brand: m.product?.brands || null,
             image_url:
-              m.product!.image_front_url ||
-              m.product!.image_url ||
+              m.product?.image_front_url ||
+              m.product?.image_url ||
               null,
             receipt_name: m.item.name,
           })),
@@ -144,7 +144,7 @@ export default function ImportPage() {
     }
   };
 
-  const confirmedCount = matches.filter((m) => m.confirmed && m.product).length;
+  const confirmedCount = matches.filter((m) => m.confirmed).length;
   const foundCount = matches.filter((m) => m.product).length;
 
   // Auth gate
@@ -329,27 +329,18 @@ export default function ImportPage() {
                 </div>
 
                 {/* Toggle */}
-                {match.product ? (
-                  <button
-                    onClick={() => toggleConfirm(i)}
-                    className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                      match.confirmed
-                        ? "bg-primary text-on-primary"
-                        : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-lg">
-                      {match.confirmed ? "check" : "close"}
-                    </span>
-                  </button>
-                ) : (
-                  <Link
-                    href={`/search?q=${encodeURIComponent(match.item.name)}`}
-                    className="text-xs text-primary font-medium hover:underline flex-shrink-0"
-                  >
-                    Search
-                  </Link>
-                )}
+                <button
+                  onClick={() => toggleConfirm(i)}
+                  className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                    match.confirmed
+                      ? "bg-primary text-on-primary"
+                      : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-lg">
+                    {match.confirmed ? "check" : "close"}
+                  </span>
+                </button>
               </div>
             ))}
           </div>

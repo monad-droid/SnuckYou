@@ -28,6 +28,7 @@ export default function ImportPage() {
   const [progress, setProgress] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [parseProgress, setParseProgress] = useState<{ done: number; total: number } | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then((res: { data: { user: { id: string } | null } }) => {
@@ -36,29 +37,45 @@ export default function ImportPage() {
     });
   }, [supabase.auth]);
 
-  const handleFile = useCallback(async (file: File) => {
+  const handleFiles = useCallback(async (files: File[]) => {
     setError(null);
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
-      setError("Please upload a PDF receipt.");
+    const pdfFiles = files.filter((f) => f.name.toLowerCase().endsWith(".pdf"));
+    if (pdfFiles.length === 0) {
+      setError("Please upload PDF receipts.");
       return;
     }
 
-    const formData = new FormData();
-    formData.append("file", file);
+    setParseProgress({ done: 0, total: pdfFiles.length });
+    const allItems: ReceiptItem[] = [];
+    const seenUpcs = new Set<string>();
 
-    try {
-      const res = await fetch("/api/import/parse", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Parse failed");
-      if (data.items.length === 0) {
-        setError("No product UPCs found in this receipt. Make sure it's a grocery receipt with barcodes.");
-        return;
+    for (let i = 0; i < pdfFiles.length; i++) {
+      const formData = new FormData();
+      formData.append("file", pdfFiles[i]);
+
+      try {
+        const res = await fetch("/api/import/parse", { method: "POST", body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `Failed to parse ${pdfFiles[i].name}`);
+        for (const item of data.items as ReceiptItem[]) {
+          if (!seenUpcs.has(item.upc)) {
+            seenUpcs.add(item.upc);
+            allItems.push(item);
+          }
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : `Failed to parse ${pdfFiles[i].name}`);
       }
-      setItems(data.items);
-      startLookup(data.items);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to parse receipt");
+      setParseProgress({ done: i + 1, total: pdfFiles.length });
     }
+
+    setParseProgress(null);
+    if (allItems.length === 0) {
+      setError("No product UPCs found in these receipts. Make sure they are grocery receipts with barcodes.");
+      return;
+    }
+    setItems(allItems);
+    startLookup(allItems);
   }, []);
 
   const startLookup = async (receiptItems: ReceiptItem[]) => {
@@ -185,10 +202,10 @@ export default function ImportPage() {
   return (
     <div className="max-w-3xl mx-auto px-6 py-12">
       <h1 className="font-headline text-4xl font-extrabold text-on-surface mb-2">
-        Import Receipt
+        Import Receipts
       </h1>
       <p className="text-on-surface-variant mb-8">
-        Upload a grocery receipt PDF to find and track your purchased products.
+        Upload one or more grocery receipt PDFs to find and track your purchased products.
       </p>
 
       {error && (
@@ -205,8 +222,8 @@ export default function ImportPage() {
           onDrop={(e) => {
             e.preventDefault();
             setDragging(false);
-            const file = e.dataTransfer.files[0];
-            if (file) handleFile(file);
+            const files = Array.from(e.dataTransfer.files);
+            if (files.length > 0) handleFiles(files);
           }}
           className={`border-2 border-dashed rounded-2xl p-16 text-center transition-colors cursor-pointer ${
             dragging
@@ -217,9 +234,10 @@ export default function ImportPage() {
             const input = document.createElement("input");
             input.type = "file";
             input.accept = ".pdf";
+            input.multiple = true;
             input.onchange = (e) => {
-              const file = (e.target as HTMLInputElement).files?.[0];
-              if (file) handleFile(file);
+              const files = Array.from((e.target as HTMLInputElement).files || []);
+              if (files.length > 0) handleFiles(files);
             };
             input.click();
           }}
@@ -227,12 +245,25 @@ export default function ImportPage() {
           <span className="material-symbols-outlined text-5xl text-primary/60 mb-4 block">
             upload_file
           </span>
-          <p className="font-headline font-bold text-lg text-on-surface mb-1">
-            Drop your receipt PDF here
-          </p>
-          <p className="text-on-surface-variant text-sm">
-            or click to browse — works with Meijer, Walmart, Target, and other grocery receipts
-          </p>
+          {parseProgress ? (
+            <>
+              <p className="font-headline font-bold text-lg text-on-surface mb-1">
+                Parsing receipts...
+              </p>
+              <p className="text-on-surface-variant text-sm">
+                {parseProgress.done} of {parseProgress.total} receipts processed
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="font-headline font-bold text-lg text-on-surface mb-1">
+                Drop your receipt PDFs here
+              </p>
+              <p className="text-on-surface-variant text-sm">
+                or click to browse — select multiple files at once. Works with Meijer, Walmart, Target, and other grocery receipts
+              </p>
+            </>
+          )}
         </div>
       )}
 

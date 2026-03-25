@@ -140,6 +140,11 @@ CREATE POLICY "Users can insert own watchlist"
   ON user_watchlist FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+CREATE POLICY "Users can update own watchlist"
+  ON user_watchlist FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
 CREATE POLICY "Users can delete own watchlist"
   ON user_watchlist FOR DELETE
   USING (auth.uid() = user_id);

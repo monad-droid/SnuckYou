@@ -7,6 +7,7 @@ import type { User } from "@supabase/supabase-js";
 export default function AuthButton() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [signingIn, setSigningIn] = useState(false);
   const supabase = createBrowserClient();
 
   useEffect(() => {
@@ -34,15 +35,33 @@ export default function AuthButton() {
   }, [supabase.auth]);
 
   const signIn = async () => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    // If Supabase returns a URL instead of auto-redirecting, navigate manually
-    if (!error && data?.url) {
-      window.location.href = data.url;
+    setSigningIn(true);
+    try {
+      // Race against a 5s timeout so the button doesn't hang forever
+      const oauthPromise = supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) =>
+        setTimeout(() => resolve({ data: null, error: { message: "Sign-in timed out" } }), 5000)
+      );
+      const { data, error } = await Promise.race([oauthPromise, timeoutPromise]);
+
+      if (error) {
+        console.error("Sign-in error:", error.message);
+        setSigningIn(false);
+        return;
+      }
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+      // No URL returned — something went wrong silently
+      setSigningIn(false);
+    } catch {
+      setSigningIn(false);
     }
   };
 
@@ -55,9 +74,10 @@ export default function AuthButton() {
     return (
       <button
         onClick={signIn}
-        className="text-sm font-medium text-emerald-800 hover:text-emerald-900 border border-emerald-800/30 rounded-full px-4 py-1.5 transition-colors duration-200"
+        disabled={signingIn}
+        className="text-sm font-medium text-emerald-800 hover:text-emerald-900 border border-emerald-800/30 rounded-full px-4 py-1.5 transition-colors duration-200 disabled:opacity-50"
       >
-        Sign in
+        {signingIn ? "Signing in…" : "Sign in"}
       </button>
     );
   }

@@ -24,19 +24,7 @@ export default function RootLayout({
         {/* Preconnect to Google Fonts for faster loading */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* Load fonts asynchronously so they don't block first paint */}
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link
-          rel="preload"
-          as="style"
-          href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&family=Inter:wght@400;500;600&display=swap"
-        />
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link
-          rel="preload"
-          as="style"
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-        />
+        {/* Load Google Fonts asynchronously — no preload to avoid stalling page load */}
         <script
           dangerouslySetInnerHTML={{
             __html: `

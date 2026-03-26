@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Client } from "pg";
 
-export const maxDuration = 30;
+export const maxDuration = 300; // 5 minutes for heavy migrations
 
 export async function POST(request: NextRequest) {
   // Verify cron secret
@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
 
   try {
     await client.connect();
+    await client.query("SET statement_timeout = '290s'");
     const result = await client.query(sql);
     return NextResponse.json({
       success: true,

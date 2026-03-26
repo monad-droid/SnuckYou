@@ -1,10 +1,17 @@
 import { Suspense } from "react";
-import { searchProducts, getProduct } from "@/lib/openfoodfacts";
 import { supabase } from "@/lib/supabase";
 import SearchBar from "@/components/SearchBar";
 import ProductCard from "@/components/ProductCard";
 import WaitlistForm from "@/components/WaitlistForm";
 import { redirect } from "next/navigation";
+
+type LocalProduct = {
+  barcode: string;
+  product_name: string | null;
+  brand: string | null;
+  image_url: string | null;
+  categories: string | null;
+};
 
 function looksLikeBarcode(q: string): boolean {
   return /^\d{8,14}$/.test(q);
@@ -39,17 +46,61 @@ function ProductGridSkeleton() {
   );
 }
 
+async function searchLocal(query: string, page: number) {
+  const pageSize = 24;
+  const offset = (page - 1) * pageSize;
+  const terms = query.split(/\s+/).filter(Boolean);
+  const tsquery = terms.map((t) => `${t}:*`).join(" & ");
+
+  // Try full-text search first
+  const { data, error, count } = await supabase
+    .from("products")
+    .select("barcode, product_name, brand, image_url, categories", { count: "exact" })
+    .textSearch("fts", tsquery)
+    .range(offset, offset + pageSize - 1)
+    .limit(pageSize);
+
+  if (!error) {
+    return {
+      products: data || [],
+      count: count || 0,
+      page,
+      page_count: Math.ceil((count || 0) / pageSize),
+    };
+  }
+
+  // Fallback: ilike search if FTS column doesn't exist yet
+  const likePattern = `%${query}%`;
+  const { data: fallbackData, count: fallbackCount } = await supabase
+    .from("products")
+    .select("barcode, product_name, brand, image_url, categories", { count: "exact" })
+    .or(`product_name.ilike.${likePattern},brand.ilike.${likePattern}`)
+    .range(offset, offset + pageSize - 1)
+    .limit(pageSize);
+
+  return {
+    products: fallbackData || [],
+    count: fallbackCount || 0,
+    page,
+    page_count: Math.ceil((fallbackCount || 0) / pageSize),
+  };
+}
+
 async function ProductResults({ query, page }: { query: string; page: number }) {
   if (looksLikeBarcode(query.trim())) {
-    const product = await getProduct(query.trim());
-    if (product) {
+    const { data } = await supabase
+      .from("products")
+      .select("barcode")
+      .eq("barcode", query.trim())
+      .limit(1);
+    if (data && data.length > 0) {
       redirect(`/product/${encodeURIComponent(query.trim())}`);
     }
   }
 
   let results;
   try {
-    results = await searchProducts(query, page);
+    results = await searchLocal(query, page);
   } catch {
     return (
       <p className="text-on-surface-variant text-center py-12">
@@ -58,33 +109,35 @@ async function ProductResults({ query, page }: { query: string; page: number }) 
     );
   }
 
-  const products = results.products || [];
-  const searchTerms = query.toLowerCase().split(/\s+/).filter(Boolean);
-  const filteredProducts = products.filter((p) => {
-    const text = `${p.product_name || ""} ${p.brands || ""} ${(p.categories_tags || []).join(" ")}`.toLowerCase();
-    return searchTerms.every((term) => text.includes(term));
-  });
+  const products = results.products as LocalProduct[];
 
-  const barcodes = filteredProducts.map((p) => p.code);
+  const barcodes = products.map((p) => p.barcode);
   const changedBarcodes = await getBarcodesWithChanges(barcodes);
 
   return (
     <>
       <p className="font-body text-on-surface-variant mb-8">
-        Showing {filteredProducts.length} products for &ldquo;{query}&rdquo;
+        Showing {products.length} of {results.count.toLocaleString()} products for &ldquo;{query}&rdquo;
       </p>
 
-      {filteredProducts.length === 0 ? (
+      {products.length === 0 ? (
         <p className="text-on-surface-variant text-center py-12">
           No products found. Try a different search term.
         </p>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-          {filteredProducts.map((product) => (
+          {products.map((product) => (
             <ProductCard
-              key={product.code}
-              product={product}
-              hasChanges={changedBarcodes.has(product.code)}
+              key={product.barcode}
+              product={{
+                code: product.barcode,
+                product_name: product.product_name || undefined,
+                brands: product.brand || undefined,
+                image_url: product.image_url || undefined,
+                image_front_url: product.image_url || undefined,
+                categories_tags: product.categories?.split(", ") || undefined,
+              }}
+              hasChanges={changedBarcodes.has(product.barcode)}
             />
           ))}
         </div>

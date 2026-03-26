@@ -49,6 +49,20 @@ CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode);
 CREATE INDEX IF NOT EXISTS idx_changes_barcode ON ingredient_changes(barcode);
 CREATE INDEX IF NOT EXISTS idx_changes_detected_at ON ingredient_changes(detected_at DESC);
 
+-- Full-text search on product_name and brand
+ALTER TABLE products ADD COLUMN IF NOT EXISTS fts tsvector
+  GENERATED ALWAYS AS (
+    setweight(to_tsvector('english', coalesce(product_name, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(brand, '')), 'B')
+  ) STORED;
+
+CREATE INDEX IF NOT EXISTS idx_products_fts ON products USING gin(fts);
+
+-- Trigram index for fuzzy / partial matching
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX IF NOT EXISTS idx_products_name_trgm ON products USING gin(product_name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_products_brand_trgm ON products USING gin(brand gin_trgm_ops);
+
 -- Enable Row Level Security (allow public reads)
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ingredient_changes ENABLE ROW LEVEL SECURITY;
